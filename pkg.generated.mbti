@@ -1,0 +1,105 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tui"
+
+import {
+  "moonbit-community/tty",
+  "moonbit-community/tty/color",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub async fn[T] with_terminal(async (Terminal) -> T) -> T
+
+// Errors
+
+// Types and methods
+pub(all) enum Align {
+  Left
+  Center
+  Right
+} derive(Eq, @debug.Debug)
+pub fn Align::equal(Self, Self) -> Bool
+pub fn Align::not_equal(Self, Self) -> Bool
+pub fn Align::to_repr(Self) -> @debug.Repr
+
+type Frame
+pub fn Frame::Frame(width~ : Int, height~ : Int) -> Self
+pub fn Frame::area(Self) -> Rect
+pub fn Frame::fill(Self, Rect, style? : Style) -> Unit
+pub fn Frame::height(Self) -> Int
+pub fn Frame::line(Self, Rect, Line, align? : Align) -> Unit
+pub fn Frame::lines(Self, Rect, ArrayView[Line], align? : Align) -> Unit
+pub fn Frame::set_cursor(Self, Rect, row? : Int, col? : Int) -> Unit
+pub fn Frame::text(Self, row~ : Int, col~ : Int, StringView, style? : Style) -> Unit
+pub fn Frame::to_text(Self) -> String
+pub fn Frame::width(Self) -> Int
+
+pub(all) enum Length {
+  Fixed(Int)
+  Fill
+} derive(Eq, @debug.Debug)
+pub fn Length::equal(Self, Self) -> Bool
+pub fn Length::not_equal(Self, Self) -> Bool
+pub fn Length::to_repr(Self) -> @debug.Repr
+
+type Line derive(Eq, @debug.Debug)
+pub fn Line::Line(Array[Span]) -> Self
+pub fn Line::equal(Self, Self) -> Bool
+pub fn Line::from_text(StringView, style? : Style) -> Self
+pub fn Line::not_equal(Self, Self) -> Bool
+pub fn Line::to_repr(Self) -> @debug.Repr
+pub fn Line::to_text(Self) -> String
+pub fn Line::width(Self) -> Int
+pub fn Line::wrap(Self, Int) -> Array[Self]
+
+pub struct Rect {
+  row : Int
+  col : Int
+  width : Int
+  height : Int
+} derive(Eq, @debug.Debug)
+pub fn Rect::Rect(row~ : Int, col~ : Int, width~ : Int, height~ : Int) -> Self
+pub fn Rect::equal(Self, Self) -> Bool
+pub fn Rect::not_equal(Self, Self) -> Bool
+pub fn Rect::split_cols(Self, Array[Length]) -> Array[Self]
+pub fn Rect::split_rows(Self, Array[Length]) -> Array[Self]
+pub fn Rect::to_repr(Self) -> @debug.Repr
+
+pub struct Size {
+  width : Int
+  height : Int
+} derive(Eq, @debug.Debug)
+pub fn Size::equal(Self, Self) -> Bool
+pub fn Size::not_equal(Self, Self) -> Bool
+pub fn Size::to_repr(Self) -> @debug.Repr
+
+pub struct Span {
+  text : String
+  style : Style
+} derive(Eq, @debug.Debug)
+pub fn Span::Span(StringView, style? : Style) -> Self
+pub fn Span::equal(Self, Self) -> Bool
+pub fn Span::not_equal(Self, Self) -> Bool
+pub fn Span::to_repr(Self) -> @debug.Repr
+
+pub struct Style {
+  fg : @color.Color
+  bg : @color.Color
+  bold : Bool
+  italic : Bool
+  underline : Bool
+  reverse : Bool
+} derive(Eq, @debug.Debug)
+pub fn Style::Style(fg? : @color.Color, bg? : @color.Color, bold? : Bool, italic? : Bool, underline? : Bool, reverse? : Bool) -> Self
+pub fn Style::equal(Self, Self) -> Bool
+pub fn Style::not_equal(Self, Self) -> Bool
+pub fn Style::to_repr(Self) -> @debug.Repr
+
+type Terminal
+pub async fn Terminal::draw(Self, Frame) -> Unit
+pub async fn Terminal::read_event(Self) -> @tty.Event
+pub fn Terminal::size(Self) -> Size
+
+// Type aliases
+
+// Traits

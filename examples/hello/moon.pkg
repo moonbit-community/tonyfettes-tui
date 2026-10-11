@@ -1,0 +1,8 @@
+import {
+  "moonbitlang/async",
+  "moonbit-community/tui",
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")

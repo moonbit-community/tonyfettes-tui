@@ -1,0 +1,6 @@
+# MoonBit
+_build/
+.mooncakes/
+
+# Local checkout of unreleased dependencies, see README
+.deps/

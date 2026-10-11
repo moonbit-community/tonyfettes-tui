@@ -1,0 +1,17 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/core/debug",
+  "moonbit-community/displaytext",
+  "moonbit-community/tty",
+  "moonbit-community/tty/color",
+}
+
+import {
+  "moonbitlang/core/debug",
+} for "test"
+
+import {
+  "moonbitlang/core/debug",
+} for "wbtest"
+
+supported_targets = "native"

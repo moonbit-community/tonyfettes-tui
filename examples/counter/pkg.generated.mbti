@@ -1,0 +1,13 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tui/examples/counter"
+
+// Values
+
+// Errors
+
+// Types and methods
+type State
+
+// Type aliases
+
+// Traits
