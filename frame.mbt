@@ -205,16 +205,27 @@ pub fn Frame::line(
 ///|
 /// Paint `lines` down the rows of `area`, one line per row, starting at the
 /// top. Lines that do not fit in the area's height are not painted.
+///
+/// With `scroll`, the area is a window onto `lines`: painting starts at the
+/// scroll position instead of the first line. Drawing also updates `scroll`
+/// with the number of lines and the area's height, which keeps the position
+/// within the content.
 pub fn Frame::lines(
   self : Frame,
   area : Rect,
   lines : ArrayView[Line],
   align? : Align = Left,
+  scroll? : Scroll,
 ) -> Unit {
-  for index in 0..<lines.length().min(area.height) {
+  let first = if scroll is Some(scroll) {
+    scroll.fit(content=lines.length(), height=area.height)
+  } else {
+    0
+  }
+  for index in 0..<(lines.length() - first).min(area.height) {
     self.line(
       Rect(row=area.row + index, col=area.col, width=area.width, height=1),
-      lines[index],
+      lines[first + index],
       align~,
     )
   }

@@ -8,7 +8,7 @@ import {
 }
 
 // Values
-pub async fn[T] with_terminal(async (Terminal) -> T) -> T
+pub async fn[T] with_terminal(mouse? : Bool, async (Terminal) -> T) -> T
 
 // Errors
 
@@ -28,7 +28,7 @@ pub fn Frame::area(Self) -> Rect
 pub fn Frame::fill(Self, Rect, style? : Style) -> Unit
 pub fn Frame::height(Self) -> Int
 pub fn Frame::line(Self, Rect, Line, align? : Align) -> Unit
-pub fn Frame::lines(Self, Rect, ArrayView[Line], align? : Align) -> Unit
+pub fn Frame::lines(Self, Rect, ArrayView[Line], align? : Align, scroll? : Scroll) -> Unit
 pub fn Frame::set_cursor(Self, Rect, row? : Int, col? : Int) -> Unit
 pub fn Frame::text(Self, row~ : Int, col~ : Int, StringView, style? : Style) -> Unit
 pub fn Frame::to_text(Self) -> String
@@ -64,6 +64,16 @@ pub fn Rect::not_equal(Self, Self) -> Bool
 pub fn Rect::split_cols(Self, Array[Length]) -> Array[Self]
 pub fn Rect::split_rows(Self, Array[Length]) -> Array[Self]
 pub fn Rect::to_repr(Self) -> @debug.Repr
+
+type Scroll
+pub fn Scroll::Scroll(stick_to_bottom? : Bool) -> Self
+pub fn Scroll::at_bottom(Self) -> Bool
+pub fn Scroll::offset(Self) -> Int
+pub fn Scroll::page_down(Self) -> Unit
+pub fn Scroll::page_up(Self) -> Unit
+pub fn Scroll::scroll_by(Self, Int) -> Unit
+pub fn Scroll::to_bottom(Self) -> Unit
+pub fn Scroll::to_top(Self) -> Unit
 
 pub struct Size {
   width : Int

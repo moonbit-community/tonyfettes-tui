@@ -31,7 +31,14 @@ struct Terminal {
 /// Opens the controlling terminal, switches to raw mode and the alternate
 /// screen, requests the kitty keyboard "disambiguate" level, and enables
 /// bracketed paste. Raises if the process has no terminal.
-pub async fn[T] with_terminal(f : async (Terminal) -> T) -> T {
+///
+/// With `mouse`, clicks and the scroll wheel arrive as `Mouse` events from
+/// `read_event`. The terminal then stops handling the mouse itself, so its own
+/// text selection no longer works while the session runs.
+pub async fn[T] with_terminal(
+  mouse? : Bool = false,
+  f : async (Terminal) -> T,
+) -> T {
   let tty = @tty.Tty::open()
   defer tty.close()
   let window = tty.window_size()
@@ -49,7 +56,11 @@ pub async fn[T] with_terminal(f : async (Terminal) -> T) -> T {
           defer @async.protect_from_cancel(() => {
             tty.execute([ResetStyle, ShowCursor])
           })
-          f(terminal)
+          if mouse {
+            tty.with_mouse(Click, () => f(terminal))
+          } else {
+            f(terminal)
+          }
         })
       })
     })
@@ -80,7 +91,8 @@ pub async fn Terminal::draw(self : Terminal, frame : Frame) -> Unit {
 }
 
 ///|
-/// Wait for the next terminal event: a key, a paste, or a resize.
+/// Wait for the next terminal event: a key, a paste, a resize, or, when the
+/// session was started with `mouse`, a mouse action.
 ///
 /// After a `Resize` event `size` reports the new size, and the next `draw`
 /// repaints the whole screen.

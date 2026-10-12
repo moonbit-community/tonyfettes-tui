@@ -96,6 +96,37 @@ frame.set_cursor(area, col=prompt.width())  // relative to the area
 Painting is clipped to the area it is given, so a line that is too long is cut
 off instead of spilling into its neighbour.
 
+## Scrolling
+
+An area becomes a window onto a longer list of lines when you draw it with a
+`Scroll`. The scroll position is part of your state, like everything else:
+
+```moonbit
+struct State {
+  log : Array[String]
+  scroll : @tui.Scroll // Scroll(stick_to_bottom=true) for a chat or a log
+}
+
+// In view: wrap to the area's width, then draw through the scroll position.
+frame.lines(body, lines, scroll=state.scroll)
+
+// In the event loop:
+PageUp => state.scroll.page_up()
+PageDown => state.scroll.page_down()
+Input(Mouse({ kind: Scroll(Up), .. })) => state.scroll.scroll_by(-3)
+```
+
+Drawing tells the `Scroll` how many lines there are and how tall the area is.
+That is what keeps the position inside the content when lines are removed or
+the terminal is resized, and what lets `page_up` know the size of a page. With
+`stick_to_bottom`, the view follows new lines until the user scrolls up, and
+follows again once they return to the end. `at_bottom()` is there for a "more
+below" hint.
+
+Mouse events, including the wheel, arrive only when the session is started with
+`with_terminal(mouse=true, ...)`. The terminal then stops handling the mouse
+itself, so its own text selection does not work while the session runs.
+
 ## What is here
 
 - `Style`: foreground, background, bold, italic, underline, reverse.
@@ -105,20 +136,26 @@ off instead of spilling into its neighbour.
 - `Rect`, `Length`: areas and `split_rows` / `split_cols`.
 - `Frame`: `area`, `line`, `lines`, `fill`, `set_cursor`, `to_text`, and `text`
   for painting at an exact cell. Control characters never become cell content.
+- `Scroll`: a scroll position with `scroll_by`, `page_up`, `page_down`,
+  `to_top`, `to_bottom`, and optional following of the end.
 - `with_terminal`, `Terminal::size`, `Terminal::draw`, `Terminal::read_event`.
-  Each draw is one write, wrapped in a synchronized update.
+  Each draw is one write, wrapped in a synchronized update. Mouse reporting is
+  opt-in.
 
 Run the examples:
 
 ```sh
 moon run examples/counter   # the snippet above
-moon run examples/hello     # text input, wrapping, wide characters, resize
+moon run examples/hello     # input, wrapping, scrolling, wide characters
 ```
 
 ## What is not here yet
 
-- Scrolling views over content longer than the screen.
-- Mouse input, text selection, and copy to the clipboard.
+- Text selection and copy to the clipboard.
+- Telling which area a mouse event landed in. Events carry a row and column;
+  matching them to an area is up to you.
+- Keeping the same text in view when a resize re-wraps the lines. A `Scroll`
+  counts lines, so the view can shift after the width changes.
 - Widgets such as a text editor.
 - Padding, borders, and constraint-based layout. Areas only split into fixed
   and fill pieces.
