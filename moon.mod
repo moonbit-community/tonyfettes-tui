@@ -6,6 +6,7 @@ import {
   "moonbit-community/displaytext@0.1.5",
   "moonbit-community/tty@0.4.0",
   "moonbitlang/async@0.22.4",
+  "kawaz/grapheme@0.10.4",
 }
 
 readme = "README.md"

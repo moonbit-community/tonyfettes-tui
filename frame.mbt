@@ -7,7 +7,7 @@
 priv struct Cell {
   text : String
   style : Style
-  width : Int
+  width : Int32
 } derive(Eq)
 
 ///|
@@ -16,8 +16,8 @@ let blank : Cell = { text: " ", style: Style(), width: 1, }
 ///|
 /// A cursor position inside a frame, 0-based.
 priv struct Cursor {
-  row : Int
-  col : Int
+  row : Int32
+  col : Int32
 } derive(Eq)
 
 ///|
@@ -32,15 +32,15 @@ priv struct Cursor {
 /// those. Rows and columns are 0-based, and painting outside the frame is
 /// clipped.
 struct Frame {
-  width : Int
-  height : Int
+  width : Int32
+  height : Int32
   cells : Array[Cell]
   mut cursor : Cursor?
 }
 
 ///|
 /// Build a blank frame of `width` columns by `height` rows.
-pub fn Frame::Frame(width~ : Int, height~ : Int) -> Frame {
+pub fn Frame::Frame(width~ : Int32, height~ : Int32) -> Frame {
   let width = width.max(0)
   let height = height.max(0)
   { width, height, cells: Array::make(width * height, blank), cursor: None, }
@@ -48,25 +48,25 @@ pub fn Frame::Frame(width~ : Int, height~ : Int) -> Frame {
 
 ///|
 /// The frame's width in columns.
-pub fn Frame::width(self : Frame) -> Int {
+pub fn Frame::width(self : Frame) -> Int32 {
   self.width
 }
 
 ///|
 /// The frame's height in rows.
-pub fn Frame::height(self : Frame) -> Int {
+pub fn Frame::height(self : Frame) -> Int32 {
   self.height
 }
 
 ///|
-fn Frame::cell(self : Frame, row : Int, col : Int) -> Cell {
+fn Frame::cell(self : Frame, row : Int32, col : Int32) -> Cell {
   self.cells[row * self.width + col]
 }
 
 ///|
 /// Blank the cell at (`row`, `col`). If it is part of a wide grapheme, blank
 /// the whole grapheme so no half of it is left behind.
-fn Frame::clear_cell(self : Frame, row : Int, col : Int) -> Unit {
+fn Frame::clear_cell(self : Frame, row : Int32, col : Int32) -> Unit {
   let base = row * self.width
   let mut lead = col
   while lead > 0 && self.cells[base + lead].width == 0 {
@@ -83,11 +83,11 @@ fn Frame::clear_cell(self : Frame, row : Int, col : Int) -> Unit {
 /// that all `width` columns are inside the frame.
 fn Frame::put(
   self : Frame,
-  row : Int,
-  col : Int,
+  row : Int32,
+  col : Int32,
   text : String,
   style : Style,
-  width : Int,
+  width : Int32,
 ) -> Unit {
   for c in col..<(col + width) {
     self.clear_cell(row, c)
@@ -108,12 +108,12 @@ fn Frame::put(
 /// that `row` and the clip columns are inside the frame.
 fn Frame::paint(
   self : Frame,
-  row : Int,
-  col : Int,
+  row : Int32,
+  col : Int32,
   glyphs : Array[Glyph],
-  left~ : Int,
-  right~ : Int,
-) -> Int {
+  left~ : Int32,
+  right~ : Int32,
+) -> Int32 {
   let mut col = col
   for glyph in glyphs {
     if col + glyph.width > right {
@@ -142,10 +142,10 @@ pub fn Frame::area(self : Frame) -> Rect {
 /// nothing.
 pub fn Frame::text(
   self : Frame,
-  row~ : Int,
-  col~ : Int,
+  row~ : Int32,
+  col~ : Int32,
   text : StringView,
-  style? : Style = Style(),
+  style~ : Style = Style(),
 ) -> Unit {
   if row < 0 || row >= self.height {
     return
@@ -179,7 +179,7 @@ pub fn Frame::line(
   self : Frame,
   area : Rect,
   line : Line,
-  align? : Align = Left,
+  align~ : Align = Left,
 ) -> Unit {
   let visible = area.intersect(self.area())
   if visible.width == 0 || visible.height == 0 || visible.row != area.row {
@@ -214,7 +214,7 @@ pub fn Frame::lines(
   self : Frame,
   area : Rect,
   lines : ArrayView[Line],
-  align? : Align = Left,
+  align~ : Align = Left,
   scroll? : Scroll,
 ) -> Unit {
   let first = if scroll is Some(scroll) {
@@ -234,7 +234,7 @@ pub fn Frame::lines(
 ///|
 /// Fill `area` with blank cells in `style`, replacing what was there. The part
 /// of the area outside the frame is ignored.
-pub fn Frame::fill(self : Frame, area : Rect, style? : Style = Style()) -> Unit {
+pub fn Frame::fill(self : Frame, area : Rect, style~ : Style = Style()) -> Unit {
   let area = area.intersect(self.area())
   for row in area.row..<(area.row + area.height) {
     for col in area.col..<(area.col + area.width) {
@@ -250,8 +250,8 @@ pub fn Frame::fill(self : Frame, area : Rect, style? : Style = Style()) -> Unit 
 pub fn Frame::set_cursor(
   self : Frame,
   area : Rect,
-  row? : Int = 0,
-  col? : Int = 0,
+  row~ : Int32 = 0,
+  col~ : Int32 = 0,
 ) -> Unit {
   let area = area.intersect(self.area())
   if area.width == 0 || area.height == 0 {
@@ -289,7 +289,7 @@ pub fn Frame::to_text(self : Frame) -> String {
 ///|
 /// A copy of the top-left part of the frame that fits in `width` by `height`.
 /// A wide grapheme cut by the right edge is replaced with blanks.
-fn Frame::clipped(self : Frame, width~ : Int, height~ : Int) -> Frame {
+fn Frame::clipped(self : Frame, width~ : Int32, height~ : Int32) -> Frame {
   let frame = Frame(width=self.width.min(width), height=self.height.min(height))
   for row in 0..<frame.height {
     for col in 0..<frame.width {

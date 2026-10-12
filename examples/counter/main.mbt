@@ -1,6 +1,6 @@
 ///|
 struct State {
-  mut count : Int
+  mut count : Int32
 }
 
 ///|

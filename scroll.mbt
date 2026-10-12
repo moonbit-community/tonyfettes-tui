@@ -10,10 +10,10 @@
 struct Scroll {
   stick_to_bottom : Bool
   // Index of the first visible line.
-  mut offset : Int
+  mut offset : Int32
   // The largest valid offset and the area height, as of the last draw.
-  mut max_offset : Int
-  mut height : Int
+  mut max_offset : Int32
+  mut height : Int32
 }
 
 ///|
@@ -22,14 +22,14 @@ struct Scroll {
 /// With `stick_to_bottom`, the view starts at the end and stays there as
 /// lines are added, until the user scrolls up; scrolling back to the end
 /// resumes following. This is the behaviour a chat log or a live output wants.
-pub fn Scroll::Scroll(stick_to_bottom? : Bool = false) -> Scroll {
+pub fn Scroll::Scroll(stick_to_bottom~ : Bool = false) -> Scroll {
   { stick_to_bottom, offset: 0, max_offset: 0, height: 0, }
 }
 
 ///|
 /// Record the content and area sizes of this draw, bring the position within
 /// range, and return the index of the first visible line.
-fn Scroll::fit(self : Scroll, content~ : Int, height~ : Int) -> Int {
+fn Scroll::fit(self : Scroll, content~ : Int32, height~ : Int32) -> Int32 {
   let max_offset = (content - height).max(0)
   // At the end before this draw means following the content as it grows.
   if self.stick_to_bottom && self.offset >= self.max_offset {
@@ -44,14 +44,14 @@ fn Scroll::fit(self : Scroll, content~ : Int, height~ : Int) -> Int {
 ///|
 /// Scroll by `rows` lines: positive moves down, towards the end; negative
 /// moves up. The position stops at either end.
-pub fn Scroll::scroll_by(self : Scroll, rows : Int) -> Unit {
+pub fn Scroll::scroll_by(self : Scroll, rows : Int32) -> Unit {
   self.offset = (self.offset + rows).clamp(min=0, max=self.max_offset)
 }
 
 ///|
 /// A page is the area's height less one line, so a line of context carries
 /// over between pages.
-fn Scroll::page(self : Scroll) -> Int {
+fn Scroll::page(self : Scroll) -> Int32 {
   (self.height - 1).max(1)
 }
 
@@ -81,7 +81,7 @@ pub fn Scroll::to_bottom(self : Scroll) -> Unit {
 
 ///|
 /// The index of the first visible line, as of the last draw or scroll.
-pub fn Scroll::offset(self : Scroll) -> Int {
+pub fn Scroll::offset(self : Scroll) -> Int32 {
   self.offset
 }
 

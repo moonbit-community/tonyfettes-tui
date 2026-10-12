@@ -1,7 +1,7 @@
 ///|
 /// Draw lines "0", "1", ... `count - 1` through `scroll` into an area `height`
 /// rows tall, and return what shows.
-fn window(scroll : @tui.Scroll, count~ : Int, height~ : Int) -> String {
+fn window(scroll : @tui.Scroll, count~ : Int32, height~ : Int32) -> String {
   let frame = @tui.Frame(width=4, height~)
   let lines = Array::makei(count, index => @tui.Line::from_text("\{index}"))
   frame.lines(frame.area(), lines, scroll~)

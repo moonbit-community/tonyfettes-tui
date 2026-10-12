@@ -2,15 +2,20 @@
 /// A rectangular area of a frame: `height` rows starting at `row`, `width`
 /// columns starting at `col`. Rows and columns are 0-based.
 pub struct Rect {
-  row : Int
-  col : Int
-  width : Int
-  height : Int
+  row : Int32
+  col : Int32
+  width : Int32
+  height : Int32
 } derive(Eq, Debug)
 
 ///|
 /// Build an area. A negative width or height becomes zero.
-pub fn Rect::Rect(row~ : Int, col~ : Int, width~ : Int, height~ : Int) -> Rect {
+pub fn Rect::Rect(
+  row~ : Int32,
+  col~ : Int32,
+  width~ : Int32,
+  height~ : Int32,
+) -> Rect {
   { row, col, width: width.max(0), height: height.max(0), }
 }
 
@@ -34,7 +39,7 @@ fn Rect::intersect(self : Rect, other : Rect) -> Rect {
 /// How much of an area one piece of a split takes.
 pub(all) enum Length {
   /// Exactly this many rows or columns, or whatever is left if there are fewer.
-  Fixed(Int)
+  Fixed(Int32)
   /// An equal share of what the `Fixed` pieces leave over.
   Fill
 } derive(Eq, Debug)
@@ -49,7 +54,7 @@ pub extend Length with @debug.Debug::{to_repr}
 /// Divide `total` rows or columns among `lengths`. `Fixed` pieces are served
 /// first, in order; the `Fill` pieces share the rest, the earlier ones taking
 /// the extra when it does not divide evenly.
-fn divide(total : Int, lengths : Array[Length]) -> Array[Int] {
+fn divide(total : Int32, lengths : Array[Length]) -> Array[Int32] {
   let sizes = []
   let mut rest = total
   let mut fills = 0

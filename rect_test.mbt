@@ -1,5 +1,5 @@
 ///|
-fn heights(areas : Array[@tui.Rect]) -> Array[(Int, Int)] {
+fn heights(areas : Array[@tui.Rect]) -> Array[(Int32, Int32)] {
   areas.map(area => (area.row, area.height))
 }
 

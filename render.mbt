@@ -6,8 +6,8 @@ priv struct Painter {
   commands : Array[@tty.Command]
   run : StringBuilder
   mut pen : Style
-  mut row : Int
-  mut col : Int
+  mut row : Int32
+  mut col : Int32
 }
 
 ///|
@@ -55,7 +55,12 @@ fn Painter::set_style(self : Painter, style : Style) -> Unit {
 
 ///|
 /// Paint `cell` at the 0-based (`row`, `col`).
-fn Painter::paint(self : Painter, row : Int, col : Int, cell : Cell) -> Unit {
+fn Painter::paint(
+  self : Painter,
+  row : Int32,
+  col : Int32,
+  cell : Cell,
+) -> Unit {
   if self.row != row || self.col != col {
     self.flush()
     self.commands.push(CursorPosition(row + 1, col + 1))

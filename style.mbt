@@ -13,12 +13,12 @@ pub struct Style {
 /// Build a style. Omitted fields keep the terminal default, so `Style()` is
 /// unstyled text and `Style(fg=Basic(Red), bold=true)` changes only those two.
 pub fn Style::Style(
-  fg? : @color.Color = Default,
-  bg? : @color.Color = Default,
-  bold? : Bool = false,
-  italic? : Bool = false,
-  underline? : Bool = false,
-  reverse? : Bool = false,
+  fg~ : @color.Color = Default,
+  bg~ : @color.Color = Default,
+  bold~ : Bool = false,
+  italic~ : Bool = false,
+  underline~ : Bool = false,
+  reverse~ : Bool = false,
 ) -> Style {
   { fg, bg, bold, italic, underline, reverse, }
 }

@@ -3,15 +3,15 @@
 /// `diff` produces and compare the result with the frame it was asked to show.
 priv struct Screen {
   grid : Frame
-  mut row : Int
-  mut col : Int
+  mut row : Int32
+  mut col : Int32
   mut pen : Style
   mut cursor_shown : Bool
 }
 
 ///|
 /// A screen whose content is unknown to the renderer: every cell holds junk.
-fn Screen::Screen(width~ : Int, height~ : Int) -> Screen {
+fn Screen::Screen(width~ : Int32, height~ : Int32) -> Screen {
   let grid = Frame(width~, height~)
   for row in 0..<height {
     for col in 0..<width {

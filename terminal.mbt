@@ -1,8 +1,8 @@
 ///|
 /// The terminal's size in columns and rows.
 pub struct Size {
-  width : Int
-  height : Int
+  width : Int32
+  height : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -36,7 +36,7 @@ struct Terminal {
 /// `read_event`. The terminal then stops handling the mouse itself, so its own
 /// text selection no longer works while the session runs.
 pub async fn[T] with_terminal(
-  mouse? : Bool = false,
+  mouse~ : Bool = false,
   f : async (Terminal) -> T,
 ) -> T {
   let tty = @tty.Tty::open()

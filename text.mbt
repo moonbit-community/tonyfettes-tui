@@ -2,7 +2,7 @@
 /// One displayable grapheme with its width in columns and its style.
 priv struct Glyph {
   text : String
-  width : Int
+  width : Int32
   style : Style
 }
 
@@ -47,7 +47,7 @@ pub struct Span {
 
 ///|
 /// Build a span. Without `style` the text is unstyled.
-pub fn Span::Span(text : StringView, style? : Style = Style()) -> Span {
+pub fn Span::Span(text : StringView, style~ : Style = Style()) -> Span {
   { text: text.to_owned(), style, }
 }
 
@@ -76,7 +76,7 @@ pub fn Line::Line(spans : Array[Span]) -> Line {
 
 ///|
 /// A line holding one span of `text`.
-pub fn Line::from_text(text : StringView, style? : Style = Style()) -> Line {
+pub fn Line::from_text(text : StringView, style~ : Style = Style()) -> Line {
   { spans: [Span(text, style~)], }
 }
 
@@ -118,7 +118,7 @@ fn Line::from_glyphs(glyphs : ArrayView[Glyph]) -> Line {
 ///|
 /// The line's width in display columns. Wide graphemes such as CJK characters
 /// count as two.
-pub fn Line::width(self : Line) -> Int {
+pub fn Line::width(self : Line) -> Int32 {
   let mut width = 0
   for glyph in self.glyphs() {
     width += glyph.width
@@ -143,7 +143,7 @@ pub fn Line::to_text(self : Line) -> String {
 /// word longer than `width`, or text without spaces such as CJK, is broken
 /// wherever it reaches the edge. An empty line wraps to one empty line, so
 /// blank lines keep their row. A `width` below one gives no lines.
-pub fn Line::wrap(self : Line, width : Int) -> Array[Line] {
+pub fn Line::wrap(self : Line, width : Int32) -> Array[Line] {
   if width < 1 {
     return []
   }
