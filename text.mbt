@@ -66,18 +66,29 @@ pub extend Span with @debug.Debug::{to_repr}
 /// expand tabs before building a `Line`.
 struct Line {
   spans : Array[Span]
-} derive(Eq, Debug)
+  // Set on a line that `wrap` cut short: the next line continues the same
+  // text, and this is what was dropped at the cut (a space, or nothing).
+  // Copying a selection uses it to give back the original text instead of
+  // putting a line break wherever the text happened to wrap.
+  soft_break : String?
+} derive(Debug)
 
 ///|
 /// Build a line from spans, in left-to-right order.
 pub fn Line::Line(spans : Array[Span]) -> Line {
-  { spans: spans.copy(), }
+  { spans: spans.copy(), soft_break: None, }
 }
 
 ///|
 /// A line holding one span of `text`.
 pub fn Line::from_text(text : StringView, style~ : Style = Style()) -> Line {
-  { spans: [Span(text, style~)], }
+  { spans: [Span(text, style~)], soft_break: None, }
+}
+
+///|
+/// Two lines are equal when they show the same styled text.
+pub impl Eq for Line with fn equal(self, other) {
+  self.spans == other.spans
 }
 
 ///|
@@ -97,7 +108,7 @@ fn Line::glyphs(self : Line) -> Array[Glyph] {
 
 ///|
 /// Rebuild a line from glyphs, merging neighbours that share a style.
-fn Line::from_glyphs(glyphs : ArrayView[Glyph]) -> Line {
+fn Line::from_glyphs(glyphs : ArrayView[Glyph], soft_break? : String) -> Line {
   let spans : Array[Span] = []
   let run = StringBuilder()
   let mut style = Style()
@@ -112,7 +123,7 @@ fn Line::from_glyphs(glyphs : ArrayView[Glyph]) -> Line {
   if !run.is_empty() {
     spans.push({ text: run.to_string(), style, })
   }
-  { spans, }
+  { spans, soft_break, }
 }
 
 ///|
@@ -179,10 +190,10 @@ pub fn Line::wrap(self : Line, width : Int32) -> Array[Line] {
       -1
     }
     if break_at >= 0 {
-      lines.push(Line::from_glyphs(glyphs[start:break_at]))
+      lines.push(Line::from_glyphs(glyphs[start:break_at], soft_break=" "))
       start = break_at + 1
     } else {
-      lines.push(Line::from_glyphs(glyphs[start:end]))
+      lines.push(Line::from_glyphs(glyphs[start:end], soft_break=""))
       start = end
     }
     end = start

@@ -6,6 +6,10 @@ struct State {
   // Where the submitted lines are scrolled to. It follows new lines until the
   // user scrolls up.
   scroll : @tui.Scroll
+  // The mouse selection over the submitted lines.
+  selection : @tui.Selection
+  // Shown on the right of the bottom row until the next key press.
+  mut notice : String
 }
 
 ///|
@@ -35,7 +39,7 @@ fn view(state : State, size : @tui.Size) -> @tui.Frame {
   for text in state.submitted {
     history.append(@tui.Line::from_text(text).wrap(body.width))
   }
-  frame.lines(body, history, scroll=state.scroll)
+  frame.lines(body, history, scroll=state.scroll, selection=state.selection)
   let input = @tui.Line([
     Span("> ", style=dim),
     Span(String::from_array(state.input)),
@@ -44,13 +48,19 @@ fn view(state : State, size : @tui.Size) -> @tui.Frame {
   frame.set_cursor(prompt, col=input.width())
   // The hint on the right takes its columns first, so the help text is cut
   // off rather than overlapped on a narrow terminal.
-  let more = if state.scroll.at_bottom() { "" } else { " ↓ 下面还有" }
+  let more = if state.notice != "" {
+    " " + state.notice
+  } else if state.scroll.at_bottom() {
+    ""
+  } else {
+    " ↓ 下面还有"
+  }
   let more = @tui.Line::from_text(more, style=dim)
   guard! footer.split_cols([Fill, Fixed(more.width())]) is [help, more_area]
   frame.line(
     help,
     @tui.Line::from_text(
-      "Enter 提交 · PgUp/PgDn 滚动 · Esc 退出",
+      "Enter 提交 · PgUp/PgDn 滚动 · 拖动选中并复制 · Esc 退出",
       style=dim,
     ),
   )
@@ -65,11 +75,14 @@ async fn main {
       input: [],
       submitted: [],
       scroll: Scroll(stick_to_bottom=true),
+      selection: Selection(),
+      notice: "",
     }
     for ;; {
       terminal.draw(view(state, terminal.size()))
       match terminal.read_event() {
-        Input(Key(key)) =>
+        Input(Key(key)) => {
+          state.notice = ""
           match key.code {
             Escape => break
             Char('c') if key.modifiers.ctrl() => break
@@ -87,9 +100,19 @@ async fn main {
                 state.input.append(text.to_array())
               }
           }
+        }
         Input(Paste(text)) => state.input.append(text.to_array())
         Input(Mouse({ kind: Scroll(Up), .. })) => state.scroll.scroll_by(-3)
         Input(Mouse({ kind: Scroll(Down), .. })) => state.scroll.scroll_by(3)
+        Input(Mouse(mouse)) => {
+          state.selection.mouse(mouse)
+          // Copy as soon as the button is released, like a terminal that
+          // copies on select.
+          if mouse.kind is Release(Left) && state.selection.text() is Some(text) {
+            terminal.set_clipboard(text)
+            state.notice = "已复制 \{text.char_length()} 个字符"
+          }
+        }
         _ => ()
       }
     }

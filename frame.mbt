@@ -170,6 +170,33 @@ pub extend Align with Eq::{equal, not_equal}
 pub extend Align with @debug.Debug::{to_repr}
 
 ///|
+/// Paint `glyphs` on the first row of `area`, aligned and clipped to it.
+fn Frame::paint_line(
+  self : Frame,
+  area : Rect,
+  glyphs : Array[Glyph],
+  align : Align,
+) -> Unit {
+  let visible = area.intersect(self.area())
+  if visible.width == 0 || visible.height == 0 || visible.row != area.row {
+    return
+  }
+  let mut width = 0
+  for glyph in glyphs {
+    width += glyph.width
+  }
+  ignore(
+    self.paint(
+      area.row,
+      line_start(area, width, align),
+      glyphs,
+      left=visible.col,
+      right=visible.col + visible.width,
+    ),
+  )
+}
+
+///|
 /// Paint `line` on the first row of `area`.
 ///
 /// The line is clipped to the area: a line wider than the area is cut at the
@@ -181,25 +208,7 @@ pub fn Frame::line(
   line : Line,
   align~ : Align = Left,
 ) -> Unit {
-  let visible = area.intersect(self.area())
-  if visible.width == 0 || visible.height == 0 || visible.row != area.row {
-    return
-  }
-  let free = (area.width - line.width()).max(0)
-  let col = match align {
-    Left => area.col
-    Center => area.col + free / 2
-    Right => area.col + free
-  }
-  ignore(
-    self.paint(
-      area.row,
-      col,
-      line.glyphs(),
-      left=visible.col,
-      right=visible.col + visible.width,
-    ),
-  )
+  self.paint_line(area, line.glyphs(), align)
 }
 
 ///|
@@ -210,23 +219,42 @@ pub fn Frame::line(
 /// scroll position instead of the first line. Drawing also updates `scroll`
 /// with the number of lines and the area's height, which keeps the position
 /// within the content.
+///
+/// With `selection`, the text of this area can be selected with the mouse.
+/// The selected part is painted in reverse video, and drawing tells
+/// `selection` what is on screen so it can turn mouse coordinates into text.
 pub fn Frame::lines(
   self : Frame,
   area : Rect,
   lines : ArrayView[Line],
   align~ : Align = Left,
   scroll? : Scroll,
+  selection? : Selection,
 ) -> Unit {
   let first = if scroll is Some(scroll) {
     scroll.fit(content=lines.length(), height=area.height)
   } else {
     0
   }
+  if selection is Some(selection) {
+    selection.record(area, lines, first~, align~, scroll~)
+  }
   for index in 0..<(lines.length() - first).min(area.height) {
-    self.line(
+    let glyphs = lines[first + index].glyphs()
+    if selection is Some(selection) &&
+      selection.range_in(first + index, glyphs.length()) is Some((from, to)) {
+      for at in from..<to {
+        let glyph = glyphs[at]
+        glyphs[at] = {
+          ..glyph,
+          style: { ..glyph.style, reverse: !glyph.style.reverse, },
+        }
+      }
+    }
+    self.paint_line(
       Rect(row=area.row + index, col=area.col, width=area.width, height=1),
-      lines[first + index],
-      align~,
+      glyphs,
+      align,
     )
   }
 }

@@ -32,9 +32,10 @@ struct Terminal {
 /// screen, requests the kitty keyboard "disambiguate" level, and enables
 /// bracketed paste. Raises if the process has no terminal.
 ///
-/// With `mouse`, clicks and the scroll wheel arrive as `Mouse` events from
-/// `read_event`. The terminal then stops handling the mouse itself, so its own
-/// text selection no longer works while the session runs.
+/// With `mouse`, clicks, drags, and the scroll wheel arrive as `Mouse` events
+/// from `read_event`. The terminal then stops handling the mouse itself, so
+/// its own text selection no longer works while the session runs; use a
+/// `Selection` to provide one.
 pub async fn[T] with_terminal(
   mouse~ : Bool = false,
   f : async (Terminal) -> T,
@@ -57,7 +58,7 @@ pub async fn[T] with_terminal(
             tty.execute([ResetStyle, ShowCursor])
           })
           if mouse {
-            tty.with_mouse(Click, () => f(terminal))
+            tty.with_mouse(Drag, () => f(terminal))
           } else {
             f(terminal)
           }
@@ -103,4 +104,17 @@ pub async fn Terminal::read_event(self : Terminal) -> @tty.Event {
     self.shown = None
   }
   event
+}
+
+///|
+/// Put `text` on the system clipboard, replacing what was there.
+///
+/// This asks the terminal to do it (OSC 52), so it also works over SSH.
+/// Terminals that do not support the request, or have clipboard access turned
+/// off, ignore it, and there is no way to tell whether it worked.
+pub async fn Terminal::set_clipboard(
+  self : Terminal,
+  text : StringView,
+) -> Unit {
+  self.tty.set_clipboard(text)
 }

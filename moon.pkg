@@ -4,6 +4,7 @@ import {
   "moonbit-community/displaytext",
   "moonbit-community/tty",
   "moonbit-community/tty/color",
+  "moonbit-community/tty/input",
 }
 
 import {

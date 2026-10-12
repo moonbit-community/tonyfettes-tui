@@ -23,7 +23,7 @@ the frame already on screen and sends only the cells that differ.
 ```moonbit
 ///|
 struct State {
-  mut count : Int
+  mut count : Int32
 }
 
 ///|
@@ -127,6 +127,40 @@ Mouse events, including the wheel, arrive only when the session is started with
 `with_terminal(mouse=true, ...)`. The terminal then stops handling the mouse
 itself, so its own text selection does not work while the session runs.
 
+## Selection and copy
+
+Since the terminal no longer selects text once mouse reporting is on, the
+application does it. A `Selection` is the selection over the lines of one area:
+
+```moonbit
+// In view:
+frame.lines(body, lines, scroll=state.scroll, selection=state.selection)
+
+// In the event loop:
+Input(Mouse(mouse)) => {
+  state.selection.mouse(mouse)
+  if mouse.kind is Release(Left) && state.selection.text() is Some(text) {
+    terminal.set_clipboard(text)
+  }
+}
+```
+
+Dragging with the left button selects, and the selected text is drawn in
+reverse video. A click without a drag removes the selection. When to copy is
+your choice: the snippet copies as soon as the button is released, but
+`text()` can just as well be read on a key press.
+
+- The selection is tied to the lines, not to screen cells. It stays on the same
+  text while the area scrolls, and it can be longer than the screen: dragging
+  past the top or bottom edge scrolls the area.
+- Lines made by `Line::wrap` are copied as the text was before wrapping. Only
+  real line ends become newlines.
+- A selection is dropped when the area's width changes or when the lines it
+  covers are gone.
+- `Terminal::set_clipboard` asks the terminal to set the system clipboard
+  (OSC 52). A terminal that does not support it ignores the request, and there
+  is no way to tell.
+
 ## What is here
 
 - `Style`: foreground, background, bold, italic, underline, reverse.
@@ -138,22 +172,26 @@ itself, so its own text selection does not work while the session runs.
   for painting at an exact cell. Control characters never become cell content.
 - `Scroll`: a scroll position with `scroll_by`, `page_up`, `page_down`,
   `to_top`, `to_bottom`, and optional following of the end.
-- `with_terminal`, `Terminal::size`, `Terminal::draw`, `Terminal::read_event`.
-  Each draw is one write, wrapped in a synchronized update. Mouse reporting is
-  opt-in.
+- `Selection`: a mouse selection over an area's lines, with `mouse`, `text`,
+  and `clear`.
+- `with_terminal`, `Terminal::size`, `Terminal::draw`, `Terminal::read_event`,
+  `Terminal::set_clipboard`. Each draw is one write, wrapped in a synchronized
+  update. Mouse reporting is opt-in.
 
 Run the examples:
 
 ```sh
 moon run examples/counter   # the snippet above
-moon run examples/hello     # input, wrapping, scrolling, wide characters
+moon run examples/hello     # input, wrapping, scrolling, selection and copy
 ```
 
 ## What is not here yet
 
-- Text selection and copy to the clipboard.
-- Telling which area a mouse event landed in. Events carry a row and column;
-  matching them to an area is up to you.
+- Double-click to select a word, and keyboard-driven selection.
+- More than one selectable area sharing a selection, or a selection that
+  spans areas.
+- Telling which area a mouse event landed in, apart from `Selection`. Events
+  carry a row and column; matching them to an area is up to you.
 - Keeping the same text in view when a resize re-wraps the lines. A `Scroll`
   counts lines, so the view can shift after the width changes.
 - Widgets such as a text editor.
