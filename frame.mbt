@@ -21,6 +21,12 @@ pub struct Cursor {
 } derive(Eq, Debug)
 
 ///|
+/// A cursor position, for comparing with what `Frame::cursor` returns.
+pub fn Cursor::Cursor(row~ : Int32, col~ : Int32) -> Cursor {
+  { row, col, }
+}
+
+///|
 pub extend Cursor with Eq::{equal, not_equal}
 
 ///|
@@ -274,6 +280,18 @@ pub fn Frame::fill(self : Frame, area : Rect, style~ : Style = Style()) -> Unit 
     for col in area.col..<(area.col + area.width) {
       self.put(row, col, " ", style, 1)
     }
+  }
+}
+
+///|
+/// The style of the cell at (`row`, `col`), or the default style when that is
+/// outside the frame. Like `to_text` and `cursor`, it is for tests of view
+/// functions: it is how a test checks a color or a highlight.
+pub fn Frame::style_at(self : Frame, row~ : Int32, col~ : Int32) -> Style {
+  if row < 0 || row >= self.height || col < 0 || col >= self.width {
+    Style()
+  } else {
+    self.cell(row, col).style
   }
 }
 

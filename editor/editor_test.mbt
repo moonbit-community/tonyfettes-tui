@@ -661,3 +661,221 @@ test "draw paints the visible rows into the area it is given" {
   // An area with no room draws nothing and does not fail.
   editor.draw(frame, @tui.Rect(row=0, col=0, width=0, height=0))
 }
+
+///|
+test "position is the cursor's line and column in the text" {
+  let editor = @editor.Editor(text="ab\n你好c\n")
+  @debug.assert_eq(editor.position(), (2, 0))
+  ignore(editor.move_up())
+  editor.move_end()
+  // Columns are display columns: the two wide graphemes count for four.
+  @debug.assert_eq(editor.position(), (1, 5))
+  editor.move_to_start()
+  @debug.assert_eq(editor.position(), (0, 0))
+  // The position is in the text, not on screen: wrapping does not change it.
+  let long = @editor.Editor(text="abcdefghij")
+  ignore(edited(long, width=6))
+  @debug.assert_eq(long.position(), (0, 10))
+}
+
+///|
+test "line numbers take a column on the left and number only first rows" {
+  let editor = @editor.Editor(text="one\nabcdefghij\nthree")
+  let frame = @tui.Frame(width=10, height=5)
+  let dim = @tui.Style(fg=Basic(BrightBlack))
+  editor.draw(frame, frame.area(), line_numbers=dim)
+  // One digit of numbers plus a column on each side leaves seven columns of
+  // text, so six glyphs per row.
+  inspect(
+    frame.to_text(),
+    content=(
+      #| 1 one
+      #| 2 abcdef
+      #|   ghij
+      #| 3 three
+      #|
+    ),
+  )
+  @debug.assert_eq(frame.cursor(), Some(@tui.Cursor(row=3, col=8)))
+  @debug.assert_eq(frame.style_at(row=1, col=1), dim)
+  @debug.assert_eq(frame.style_at(row=1, col=3), @tui.Style())
+}
+
+///|
+test "the number column widens with the number of lines" {
+  let editor = @editor.Editor(text="\n\n\n\n\n\n\n\n\nten\neleven")
+  editor.move_to_start()
+  let frame = @tui.Frame(width=12, height=2)
+  editor.draw(frame, frame.area(), line_numbers=@tui.Style())
+  inspect(
+    frame.to_text(),
+    content=(
+      #|  1
+      #|  2
+    ),
+  )
+  @debug.assert_eq(frame.cursor(), Some(@tui.Cursor(row=0, col=4)))
+}
+
+///|
+/// A highlighter for the tests: digits in red, everything else unstyled.
+fn digits_red(line : String) -> Array[@tui.Span] {
+  let red = @tui.Style(fg=Basic(Red))
+  let spans = []
+  for c in line {
+    let style = if c >= '0' && c <= '9' { red } else { @tui.Style() }
+    spans.push(@tui.Span(c.to_string(), style~))
+  }
+  spans
+}
+
+///|
+test "highlight styles each glyph, across wraps and wide graphemes" {
+  let red = @tui.Style(fg=Basic(Red))
+  let editor = @editor.Editor(text="a1你2bcde345\nx9")
+  let frame = @tui.Frame(width=8, height=3)
+  editor.draw(frame, frame.area(), highlight=digits_red)
+  inspect(
+    frame.to_text(),
+    content=(
+      #|a1你2bc
+      #|de345
+      #|x9
+    ),
+  )
+  // Row 0: "a", "1", the wide grapheme over two cells, "2".
+  @debug.assert_eq(frame.style_at(row=0, col=0), @tui.Style())
+  @debug.assert_eq(frame.style_at(row=0, col=1), red)
+  @debug.assert_eq(frame.style_at(row=0, col=2), @tui.Style())
+  @debug.assert_eq(frame.style_at(row=0, col=3), @tui.Style())
+  @debug.assert_eq(frame.style_at(row=0, col=4), red)
+  // Row 1 continues the same line: its styles carry on where row 0 stopped.
+  @debug.assert_eq(frame.style_at(row=1, col=1), @tui.Style())
+  @debug.assert_eq(frame.style_at(row=1, col=2), red)
+  @debug.assert_eq(frame.style_at(row=1, col=4), red)
+  // The next line is highlighted on its own.
+  @debug.assert_eq(frame.style_at(row=2, col=0), @tui.Style())
+  @debug.assert_eq(frame.style_at(row=2, col=1), red)
+}
+
+///|
+test "highlight styles are laid over the editor's own style" {
+  let base = @tui.Style(fg=Basic(White), bg=Basic(Blue))
+  let editor = @editor.Editor(text="a1")
+  let frame = @tui.Frame(width=6, height=2)
+  editor.draw(frame, frame.area(), style=base, highlight=digits_red)
+  // Unstyled spans keep the base colors; a span's color replaces only what it
+  // sets, so the background stays.
+  @debug.assert_eq(frame.style_at(row=0, col=0), base)
+  @debug.assert_eq(
+    frame.style_at(row=0, col=1),
+    @tui.Style(fg=Basic(Red), bg=Basic(Blue)),
+  )
+  // The area behind the text has the base style too, to its full size.
+  @debug.assert_eq(frame.style_at(row=0, col=5), base)
+  @debug.assert_eq(frame.style_at(row=1, col=0), base)
+}
+
+///|
+test "a highlighter that returns too little leaves the rest unstyled" {
+  let editor = @editor.Editor(text="abcdef")
+  let frame = @tui.Frame(width=10, height=1)
+  let red = @tui.Style(fg=Basic(Red))
+  editor.draw(frame, frame.area(), highlight=_ => [@tui.Span("ab", style=red)])
+  @debug.assert_eq(frame.style_at(row=0, col=1), red)
+  @debug.assert_eq(frame.style_at(row=0, col=2), @tui.Style())
+  @debug.assert_eq(frame.style_at(row=0, col=5), @tui.Style())
+  // No spans at all is the same as no highlighting.
+  let plain = @tui.Frame(width=10, height=1)
+  editor.draw(plain, plain.area(), highlight=_ => [])
+  inspect(plain.to_text(), content="abcdef")
+  @debug.assert_eq(plain.style_at(row=0, col=0), @tui.Style())
+}
+
+///|
+test "current_line styles every row of the cursor's line, full width" {
+  let shade = @tui.Style(bg=Basic(BrightBlack))
+  let editor = @editor.Editor(text="one\nabcdefghij\nthree")
+  ignore(editor.move_up())
+  let frame = @tui.Frame(width=8, height=4)
+  editor.draw(frame, frame.area(), current_line=shade)
+  inspect(
+    frame.to_text(),
+    content=(
+      #|one
+      #|abcdefg
+      #|hij
+      #|three
+    ),
+  )
+  // Both rows of the wrapped line, including the cells past the text.
+  @debug.assert_eq(frame.style_at(row=1, col=0), shade)
+  @debug.assert_eq(frame.style_at(row=1, col=7), shade)
+  @debug.assert_eq(frame.style_at(row=2, col=0), shade)
+  @debug.assert_eq(frame.style_at(row=2, col=7), shade)
+  // The other lines are untouched.
+  @debug.assert_eq(frame.style_at(row=0, col=0), @tui.Style())
+  @debug.assert_eq(frame.style_at(row=3, col=0), @tui.Style())
+}
+
+///|
+fn click(row : Int32, col : Int32) -> @input.MouseEvent {
+  // Mouse events use 1-based terminal coordinates.
+  @input.MouseEvent::new(Press(Left), row + 1, col + 1)
+}
+
+///|
+test "a click moves the cursor to the glyph under it" {
+  let editor = @editor.Editor(text="hello\n你好世界\nlast")
+  let frame = @tui.Frame(width=20, height=6)
+  let area = @tui.Rect(row=1, col=2, width=12, height=4)
+  editor.draw(frame, area)
+  assert_true(editor.mouse(click(1, 5)))
+  @debug.assert_eq(editor.position(), (0, 3))
+  // The right half of a wide grapheme puts the cursor before that grapheme.
+  assert_true(editor.mouse(click(2, 5)))
+  @debug.assert_eq(editor.position(), (1, 2))
+  // Past the end of a row is the end of that row.
+  assert_true(editor.mouse(click(1, 13)))
+  @debug.assert_eq(editor.position(), (0, 5))
+  // Below the last row of text is the last row.
+  assert_true(editor.mouse(click(4, 3)))
+  @debug.assert_eq(editor.position(), (2, 1))
+}
+
+///|
+test "clicks outside the text and other mouse events are not used" {
+  let editor = @editor.Editor(text="hello")
+  let frame = @tui.Frame(width=20, height=6)
+  editor.draw(frame, @tui.Rect(row=1, col=2, width=12, height=4))
+  assert_true(!editor.mouse(click(0, 5)))
+  assert_true(!editor.mouse(click(1, 1)))
+  assert_true(!editor.mouse(click(5, 5)))
+  assert_true(!editor.mouse(click(1, 14)))
+  assert_true(!editor.mouse(@input.MouseEvent::new(Release(Left), 2, 4)))
+  assert_true(!editor.mouse(@input.MouseEvent::new(Press(Right), 2, 4)))
+  assert_true(!editor.mouse(@input.MouseEvent::new(Scroll(Up), 2, 4)))
+  @debug.assert_eq(editor.position(), (0, 5))
+  // Before the first draw there is nowhere to click.
+  assert_true(!@editor.Editor(text="x").mouse(click(0, 0)))
+}
+
+///|
+test "a click accounts for the number column and for scrolling" {
+  let editor = @editor.Editor(text="l1\nl2\nl3\nl4\nl5")
+  let frame = @tui.Frame(width=10, height=2)
+  editor.draw(frame, frame.area(), line_numbers=@tui.Style())
+  // Scrolled to the end: the two rows show lines 4 and 5, and the text
+  // starts after the three-column number area.
+  inspect(
+    frame.to_text(),
+    content=(
+      #| 4 l4
+      #| 5 l5
+    ),
+  )
+  assert_true(editor.mouse(click(0, 4)))
+  @debug.assert_eq(editor.position(), (3, 1))
+  // The number column itself is not the text.
+  assert_true(!editor.mouse(click(0, 1)))
+}

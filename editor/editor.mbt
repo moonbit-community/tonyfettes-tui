@@ -2,9 +2,9 @@
 /// A multi-line text editor: the text being edited and the cursor in it.
 ///
 /// Keep one `Editor` in your state per input box. Draw it with `draw`, pass
-/// it key events with `key`, and read the result with `text`. Long lines wrap to the width of the area it is drawn in, and when
-/// there are more rows than the area is tall it scrolls to keep the cursor in
-/// view.
+/// it key events with `key`, and read the result with `text`. Long lines wrap
+/// to the width of the area it is drawn in, and when there are more rows than
+/// the area is tall it scrolls to keep the cursor in view.
 ///
 /// The editor does not decide what Enter means: `key` leaves a plain Enter
 /// unhandled so the application can submit, and inserts a line break on
@@ -23,6 +23,8 @@ struct Editor {
   mut width : Int32
   // The first visible row, when there are more rows than the area is tall.
   mut top : Int32
+  // Where the text was last drawn, which is what mouse coordinates refer to.
+  mut area : @tui.Rect
 }
 
 ///|
@@ -72,7 +74,14 @@ fn edit_glyphs(text : StringView) -> Array[Glyph] {
 /// Build an editor holding `text`, with the cursor at the end.
 pub fn Editor::Editor(text~ : StringView = "") -> Editor {
   let glyphs = edit_glyphs(text)
-  { glyphs, cursor: glyphs.length(), goal: None, width: 0, top: 0, }
+  {
+    glyphs,
+    cursor: glyphs.length(),
+    goal: None,
+    width: 0,
+    top: 0,
+    area: Rect(row=0, col=0, width=0, height=0),
+  }
 }
 
 ///|
@@ -290,43 +299,59 @@ pub fn Editor::kill_after(self : Editor) -> Unit {
 }
 
 ///|
-/// The rows the text occupies at `width` columns, each a range `start..<end`
-/// of glyph indices. A row ends at a line break, which belongs to neither row,
-/// or where the next glyph would not fit. There is always at least one row.
+/// One row of the laid-out text: the glyphs `start..<end`. `line` is the
+/// 0-based line of the text it belongs to, and `first` whether it is that
+/// line's first row rather than a continuation after a wrap.
+priv struct Row {
+  start : Int32
+  end : Int32
+  line : Int32
+  first : Bool
+}
+
+///|
+/// The rows the text occupies at `width` columns. A row ends at a line break,
+/// which belongs to neither row, or where the next glyph would not fit. There
+/// is always at least one row.
 ///
 /// Rows hold one column less than `width`, so the cursor always has a cell to
 /// sit in after the last glyph of a full row. A `width` below one means
 /// unknown: nothing wraps.
-fn Editor::rows(self : Editor, width : Int32) -> Array[(Int32, Int32)] {
+fn Editor::rows(self : Editor, width : Int32) -> Array[Row] {
   let limit = (width - 1).max(1)
   let rows = []
   let mut start = 0
   let mut used = 0
+  let mut line = 0
+  let mut first = true
   for index, glyph in self.glyphs {
     if glyph.text == "\n" {
-      rows.push((start, index))
+      rows.push(Row::{ start, end: index, line, first, })
       start = index + 1
       used = 0
+      line += 1
+      first = true
       continue
     }
     if width > 0 && used + glyph.width > limit && index > start {
-      rows.push((start, index))
+      rows.push(Row::{ start, end: index, line, first, })
       start = index
       used = 0
+      first = false
     }
     used += glyph.width
   }
-  rows.push((start, self.glyphs.length()))
+  rows.push(Row::{ start, end: self.glyphs.length(), line, first, })
   rows
 }
 
 ///|
 /// The row holding the cursor. Where a line wraps, the same index is the end
 /// of one row and the start of the next; the cursor is shown on the next.
-fn Editor::cursor_row(self : Editor, rows : Array[(Int32, Int32)]) -> Int32 {
+fn Editor::cursor_row(self : Editor, rows : Array[Row]) -> Int32 {
   let mut row = 0
-  for index, range in rows {
-    if range.0 <= self.cursor {
+  for index, candidate in rows {
+    if candidate.start <= self.cursor {
       row = index
     }
   }
@@ -345,6 +370,32 @@ fn Editor::column(self : Editor, start : Int32, index : Int32) -> Int32 {
 }
 
 ///|
+/// The glyph index in row `target` that is closest to display column
+/// `column` without passing it.
+fn Editor::index_at(
+  self : Editor,
+  rows : Array[Row],
+  target : Int32,
+  column : Int32,
+) -> Int32 {
+  let row = rows[target]
+  let mut index = row.start
+  let mut used = 0
+  while index < row.end && used + self.glyphs[index].width <= column {
+    used += self.glyphs[index].width
+    index += 1
+  }
+  // The end of a wrapped row is also the start of the next one, where the
+  // cursor would be shown. Stop one glyph short to stay on the target row.
+  let wraps = target + 1 < rows.length() && rows[target + 1].start == row.end
+  if wraps && index == row.end && row.end > row.start {
+    row.end - 1
+  } else {
+    index
+  }
+}
+
+///|
 /// Move the cursor `delta` rows down (negative for up), staying as close as it
 /// can to the column it started from. Returns whether it moved; it does not
 /// when that would leave the text.
@@ -355,21 +406,8 @@ fn Editor::move_rows(self : Editor, delta : Int32) -> Bool {
   if target < 0 || target >= rows.length() {
     return false
   }
-  let goal = self.goal.unwrap_or(self.column(rows[row].0, self.cursor))
-  let (start, end) = rows[target]
-  let mut index = start
-  let mut column = 0
-  while index < end && column + self.glyphs[index].width <= goal {
-    column += self.glyphs[index].width
-    index += 1
-  }
-  // The end of a wrapped row is also the start of the next one, where the
-  // cursor would be shown. Stop one glyph short to stay on the target row.
-  let wraps = target + 1 < rows.length() && rows[target + 1].0 == end
-  if wraps && index == end && end > start {
-    index = end - 1
-  }
-  self.cursor = index
+  let goal = self.goal.unwrap_or(self.column(rows[row].start, self.cursor))
+  self.cursor = self.index_at(rows, target, goal)
   self.goal = Some(goal)
   true
 }
@@ -386,6 +424,40 @@ pub fn Editor::move_up(self : Editor) -> Bool {
 /// last row.
 pub fn Editor::move_down(self : Editor) -> Bool {
   self.move_rows(1)
+}
+
+///|
+/// Where the cursor is in the text: its 0-based line, and its 0-based column
+/// within that line counted in display columns. Lines here are the ones
+/// separated by line breaks, however they wrap.
+pub fn Editor::position(self : Editor) -> (Int32, Int32) {
+  let mut line = 0
+  for glyph in self.glyphs[:self.cursor] {
+    if glyph.text == "\n" {
+      line += 1
+    }
+  }
+  (line, self.column(self.line_start(), self.cursor))
+}
+
+///|
+/// Apply a mouse event to the editor and report whether it was used.
+///
+/// Pressing the left button on the text, where it was last drawn, moves the
+/// cursor there. A press below the last row goes to the last row.
+pub fn Editor::mouse(self : Editor, event : @input.MouseEvent) -> Bool {
+  guard event.kind is Press(Left) else { return false }
+  // Mouse events use 1-based terminal coordinates.
+  let row = event.row - 1 - self.area.row
+  let col = event.col - 1 - self.area.col
+  guard row >= 0 && row < self.area.height && col >= 0 && col < self.area.width else {
+    return false
+  }
+  let rows = self.rows(self.width)
+  let target = (self.top + row).min(rows.length() - 1)
+  self.cursor = self.index_at(rows, target, col)
+  self.goal = None
+  true
 }
 
 ///|
@@ -486,37 +558,73 @@ pub fn Editor::key(self : Editor, key : @input.KeyEvent) -> Bool {
 }
 
 ///|
-/// What an area `height` rows tall shows of the editor: the text of each
-/// visible row and where the cursor is among them.
-priv struct View {
-  rows : Array[String]
-  cursor_row : Int32
-  cursor_col : Int32
+/// `over` laid on top of `base`: its colors where it sets them, and its
+/// attributes in addition to the ones `base` has.
+fn merge(base : @tui.Style, over : @tui.Style) -> @tui.Style {
+  Style(
+    fg=if over.fg == Default { base.fg } else { over.fg },
+    bg=if over.bg == Default { base.bg } else { over.bg },
+    bold=base.bold || over.bold,
+    italic=base.italic || over.italic,
+    underline=base.underline || over.underline,
+    reverse=base.reverse || over.reverse,
+  )
 }
 
 ///|
-/// Lay the text out at the recorded width for an area `height` rows tall,
-/// scrolling just far enough to keep the cursor's row in it.
-fn Editor::view(self : Editor, height~ : Int32) -> View {
-  let rows = self.rows(self.width)
-  let row = self.cursor_row(rows)
-  let top = self.top.clamp(min=(row - height + 1).max(0), max=row)
-  // Do not leave blank rows at the bottom when the text got shorter.
-  self.top = top.clamp(min=0, max=(rows.length() - height).max(0))
-  let visible = []
-  for index in self.top..<(self.top + height).min(rows.length()) {
-    let (start, end) = rows[index]
-    let text = StringBuilder()
-    for glyph in self.glyphs[start:end] {
-      text.write_string(glyph.text)
+/// The style `highlight` gives each glyph of the line that row `index`
+/// belongs to, together with the glyph index where that line starts.
+///
+/// `highlight` sees the line's text and returns it cut into styled spans. The
+/// spans are matched to glyphs by length, so they should add up to the same
+/// text; glyphs past the end of the spans get no style.
+fn Editor::line_styles(
+  self : Editor,
+  rows : Array[Row],
+  index : Int32,
+  highlight : (String) -> Array[@tui.Span],
+) -> (Int32, Array[@tui.Style]) {
+  let mut first = index
+  while !rows[first].first {
+    first -= 1
+  }
+  let mut last = index
+  while last + 1 < rows.length() && !rows[last + 1].first {
+    last += 1
+  }
+  let start = rows[first].start
+  let end = rows[last].end
+  let text = StringBuilder()
+  for glyph in self.glyphs[start:end] {
+    text.write_string(glyph.text)
+  }
+  let spans = highlight(text.to_string())
+  let styles = []
+  // `span` is the span the next glyph falls in; `left` is how much of that
+  // span's text is still ahead of the glyph.
+  let mut span = 0
+  let mut left = if spans.length() > 0 { spans[0].text.length() } else { 0 }
+  for glyph in self.glyphs[start:end] {
+    while left <= 0 && span + 1 < spans.length() {
+      span += 1
+      left += spans[span].text.length()
     }
-    visible.push(text.to_string())
+    styles.push(if left > 0 { spans[span].style } else { Style() })
+    left -= glyph.text.length()
   }
-  {
-    rows: visible,
-    cursor_row: row - self.top,
-    cursor_col: self.column(rows[row].0, self.cursor),
+  (start, styles)
+}
+
+///|
+/// How many decimal digits `n` has.
+fn digits(n : Int32) -> Int32 {
+  let mut count = 1
+  let mut rest = n / 10
+  while rest > 0 {
+    count += 1
+    rest = rest / 10
   }
+  count
 }
 
 ///|
@@ -524,23 +632,126 @@ fn Editor::view(self : Editor, height~ : Int32) -> View {
 /// width, and the cursor.
 ///
 /// When the text has more rows than the area is tall, the rows around the
-/// cursor are shown. Drawing records the area's width in the editor, which is
-/// what up and down movement uses to find the rows. Pass `focused=false` to
-/// draw the text without placing the cursor.
+/// cursor are shown. Drawing records where the text is, which is what up and
+/// down movement and `mouse` use.
+///
+/// - `style` is the style of the text and of the area behind it.
+/// - `focused=false` draws the text without placing the cursor.
+/// - `highlight` colors the text. It is called with the text of a line and
+///   returns that same text cut into styled spans; it is called again for
+///   every visible line on every draw, so it should be cheap. Its styles are
+///   laid over `style`.
+/// - `line_numbers` shows a column of line numbers in that style on the left.
+///   Rows that continue a wrapped line have no number.
+/// - `current_line` is laid over `style` on the rows of the line the cursor
+///   is on, typically to give them a different background.
 pub fn Editor::draw(
   self : Editor,
   frame : @tui.Frame,
   area : @tui.Rect,
   style~ : @tui.Style = Style(),
   focused~ : Bool = true,
+  highlight? : (String) -> Array[@tui.Span],
+  line_numbers? : @tui.Style,
+  current_line? : @tui.Style,
 ) -> Unit {
-  self.width = area.width
-  if area.width == 0 || area.height == 0 {
+  // The last row's line is the last line, so it gives the widest number.
+  let unwrapped = self.rows(0)
+  let gutter = if line_numbers is Some(_) {
+    digits(unwrapped[unwrapped.length() - 1].line + 1) + 2
+  } else {
+    0
+  }
+  guard area.split_cols([Fixed(gutter), Fill]) is [numbers, text] else {
     return
   }
-  let view = self.view(height=area.height)
-  frame.lines(area, view.rows.map(text => @tui.Line::from_text(text, style~)))
+  self.width = text.width
+  self.area = text
+  if text.width == 0 || text.height == 0 {
+    return
+  }
+  frame.fill(text, style~)
+  if line_numbers is Some(number_style) {
+    frame.fill(numbers, style=number_style)
+  }
+  let rows = self.rows(text.width)
+  let cursor_row = self.cursor_row(rows)
+  // Scroll just far enough to bring the cursor's row into the area, and do
+  // not leave blank rows at the bottom when the text got shorter.
+  let top = self.top.clamp(
+    min=(cursor_row - text.height + 1).max(0),
+    max=cursor_row,
+  )
+  self.top = top.clamp(min=0, max=(rows.length() - text.height).max(0))
+  let cursor_line = rows[cursor_row].line
+  // The styles of the line being drawn, from `highlight`: one per glyph,
+  // starting at glyph `styled_from`. A wrapped line spans several rows, so
+  // they are kept from one row to the next.
+  let mut styled_line = -1
+  let mut styled_from = 0
+  let mut styles : Array[@tui.Style] = []
+  for index in self.top..<(self.top + text.height).min(rows.length()) {
+    let row = rows[index]
+    let screen_row = text.row + index - self.top
+    let row_area = @tui.Rect(
+      row=screen_row,
+      col=text.col,
+      width=text.width,
+      height=1,
+    )
+    let base = if current_line is Some(current) && row.line == cursor_line {
+      let base = merge(style, current)
+      frame.fill(row_area, style=base)
+      base
+    } else {
+      style
+    }
+    if line_numbers is Some(number_style) && row.first {
+      // One blank column separates the numbers from the text.
+      frame.line(
+        @tui.Rect(
+          row=screen_row,
+          col=numbers.col,
+          width=numbers.width - 1,
+          height=1,
+        ),
+        @tui.Line::from_text("\{row.line + 1}", style=number_style),
+        align=Right,
+      )
+    }
+    if highlight is Some(highlight) && row.line != styled_line {
+      let (from, line_styles) = self.line_styles(rows, index, highlight)
+      styled_line = row.line
+      styled_from = from
+      styles = line_styles
+    }
+    // Paint the row as runs of glyphs that share a style.
+    let spans : Array[@tui.Span] = []
+    let run = StringBuilder()
+    let mut run_style = base
+    for at in row.start..<row.end {
+      let glyph_style = if highlight is Some(_) {
+        merge(base, styles[at - styled_from])
+      } else {
+        base
+      }
+      if glyph_style != run_style && !run.is_empty() {
+        spans.push(Span(run.to_string(), style=run_style))
+        run.reset()
+      }
+      run_style = glyph_style
+      run.write_string(self.glyphs[at].text)
+    }
+    if !run.is_empty() {
+      spans.push(Span(run.to_string(), style=run_style))
+    }
+    frame.line(row_area, Line(spans))
+  }
   if focused {
-    frame.set_cursor(area, row=view.cursor_row, col=view.cursor_col)
+    frame.set_cursor(
+      text,
+      row=cursor_row - self.top,
+      col=self.column(rows[cursor_row].start, self.cursor),
+    )
   }
 }

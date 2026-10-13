@@ -27,6 +27,7 @@ pub struct Cursor {
   row : Int
   col : Int
 } derive(Eq, @debug.Debug)
+pub fn Cursor::Cursor(row~ : Int, col~ : Int) -> Self
 pub fn Cursor::equal(Self, Self) -> Bool
 pub fn Cursor::not_equal(Self, Self) -> Bool
 pub fn Cursor::to_repr(Self) -> @debug.Repr
@@ -40,6 +41,7 @@ pub fn Frame::height(Self) -> Int
 pub fn Frame::line(Self, Rect, Line, align? : Align) -> Unit
 pub fn Frame::lines(Self, Rect, ArrayView[Line], align? : Align, scroll? : Scroll, selection? : Selection) -> Unit
 pub fn Frame::set_cursor(Self, Rect, row? : Int, col? : Int) -> Unit
+pub fn Frame::style_at(Self, row~ : Int, col~ : Int) -> Style
 pub fn Frame::text(Self, row~ : Int, col~ : Int, StringView, style? : Style) -> Unit
 pub fn Frame::to_text(Self) -> String
 pub fn Frame::width(Self) -> Int

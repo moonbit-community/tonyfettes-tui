@@ -60,8 +60,8 @@ async fn main {
 ```
 
 `view` never touches the terminal, so it can be tested directly:
-`view(state, size).to_text()` returns what the screen would show, and
-`.cursor()` where the cursor is.
+`view(state, size).to_text()` returns what the screen would show, `.cursor()`
+where the cursor is, and `.style_at(row~, col~)` the style of a cell.
 
 ## Layout
 
@@ -197,6 +197,25 @@ where an application can recall history.
 Long lines wrap at the area's width, character by character. When the text has
 more rows than the area, the editor scrolls to keep the cursor in view.
 
+The same widget can be dressed up as a code editor. `draw` takes the pieces as
+optional arguments, and `examples/text_editor` uses all of them:
+
+```moonbit
+state.editor.draw(
+  frame,
+  body,
+  style=text_style,                // the text, and the area behind it
+  highlight=highlight_moonbit,     // (String) -> Array[Span], one line at a time
+  line_numbers=line_number_style,  // a number column on the left
+  current_line=current_line_style, // laid over the cursor's line
+)
+```
+
+`highlight` is given the text of a line and returns that text cut into styled
+spans; the editor maps the styles onto the wrapped rows. `position()` returns
+the cursor's line and column for a status row, and `mouse(event)` moves the
+cursor to where the left button was pressed.
+
 ## What is here
 
 - `Style`: foreground, background, bold, italic, underline, reverse.
@@ -204,8 +223,9 @@ more rows than the area, the editor scrolls to keep the cursor in view.
   measured in display columns, so CJK and other wide graphemes take two cells.
   Wrapping breaks at spaces, and anywhere for text without spaces.
 - `Rect`, `Length`: areas and `split_rows` / `split_cols`.
-- `Frame`: `area`, `line`, `lines`, `fill`, `set_cursor`, `to_text`, and `text`
-  for painting at an exact cell. Control characters never become cell content.
+- `Frame`: `area`, `line`, `lines`, `fill`, `set_cursor`, and `text` for
+  painting at an exact cell; `to_text`, `cursor`, and `style_at` for reading a
+  frame back in tests. Control characters never become cell content.
 - `Scroll`: a scroll position with `scroll_by`, `page_up`, `page_down`,
   `to_top`, `to_bottom`, and optional following of the end.
 - `Selection`: a mouse selection over an area's lines, with `mouse`, `text`,
@@ -214,8 +234,9 @@ more rows than the area, the editor scrolls to keep the cursor in view.
   `Terminal::set_clipboard`. Each draw is one write, wrapped in a synchronized
   update. Mouse reporting is opt-in.
 - `editor` package: `Editor`, a multi-line text input with `draw`, `key`,
-  `insert`, `text`, `set_text`, `clear`, `height`, and the individual movement
-  and deletion operations.
+  `mouse`, `insert`, `text`, `set_text`, `clear`, `height`, `position`, and
+  the individual movement and deletion operations. Drawing can add syntax
+  highlighting, line numbers, and a highlight for the current line.
 
 Run the examples:
 
@@ -234,8 +255,8 @@ moon run examples/text_editor -- notes.txt  # a small file editor built on the e
   carry a row and column; matching them to an area is up to you.
 - Keeping the same text in view when a resize re-wraps the lines. A `Scroll`
   counts lines, so the view can shift after the width changes.
-- In the editor: undo, selecting text, placing the cursor with the mouse, and
-  word wrapping.
+- In the editor: undo, selecting text, word wrapping, and horizontal
+  scrolling.
 - Other widgets, such as lists and menus.
 - Padding, borders, and constraint-based layout. Areas only split into fixed
   and fill pieces.
