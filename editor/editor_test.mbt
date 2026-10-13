@@ -881,6 +881,54 @@ test "a click accounts for the number column and for scrolling" {
 }
 
 ///|
+test "layout returns what draw would show, as data" {
+  let editor = @editor.Editor(text="one\ntwo\nabcdefghij\nfour")
+  let layout = editor.layout(width=6, height=3)
+  // Five rows in all: the third line wraps. The window holds the last three.
+  @debug.assert_eq(layout.rows, ["abcde", "fghij", "four"])
+  @debug.assert_eq(layout.cursor, @tui.Cursor(row=2, col=4))
+  @debug.assert_eq(layout.top, 2)
+  @debug.assert_eq(layout.total, 5)
+  // Drawing at the same size shows the same rows and cursor.
+  let frame = @tui.Frame(width=6, height=3)
+  editor.draw(frame, frame.area())
+  inspect(
+    frame.to_text(),
+    content=(
+      #|abcde
+      #|fghij
+      #|four
+    ),
+  )
+  @debug.assert_eq(frame.cursor(), Some(layout.cursor))
+}
+
+///|
+test "layout scrolls with the cursor and remembers the width" {
+  let editor = @editor.Editor(text="one\ntwo\nthree\nfour")
+  ignore(editor.layout(width=10, height=2))
+  ignore(editor.move_up())
+  // Still inside the window: it does not move.
+  @debug.assert_eq(editor.layout(width=10, height=2).top, 2)
+  ignore(editor.move_up())
+  let layout = editor.layout(width=10, height=2)
+  @debug.assert_eq(layout.rows, ["two", "three"])
+  @debug.assert_eq(layout.cursor, @tui.Cursor(row=0, col=3))
+  // The width given to layout is the one up and down movement wraps at.
+  let long = @editor.Editor(text="abcdefghij")
+  ignore(long.layout(width=6, height=4))
+  assert_true(long.move_up())
+  @debug.assert_eq(
+    long.layout(width=6, height=4).cursor,
+    @tui.Cursor(row=0, col=4),
+  )
+  // An empty editor still has one row, and a height below one counts as one.
+  let empty = @editor.Editor().layout(width=10, height=0)
+  @debug.assert_eq(empty.rows, [""])
+  @debug.assert_eq(empty.total, 1)
+}
+
+///|
 test "a combining mark typed after a letter joins it" {
   let editor = @editor.Editor()
   editor.insert("e")

@@ -236,7 +236,9 @@ cursor to where the left button was pressed.
 - `editor` package: `Editor`, a multi-line text input with `draw`, `key`,
   `mouse`, `insert`, `text`, `set_text`, `clear`, `height`, `position`, and
   the individual movement and deletion operations. Drawing can add syntax
-  highlighting, line numbers, and a highlight for the current line.
+  highlighting, line numbers, and a highlight for the current line; `layout`
+  returns the visible rows and the cursor instead, for an application that
+  draws the text itself.
 
 Run the examples:
 

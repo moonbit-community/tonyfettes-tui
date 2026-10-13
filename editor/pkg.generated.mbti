@@ -4,6 +4,7 @@ package "moonbit-community/tui/editor"
 import {
   "moonbit-community/tty/input",
   "moonbit-community/tui",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -24,6 +25,7 @@ pub fn Editor::is_empty(Self) -> Bool
 pub fn Editor::key(Self, @input.KeyEvent) -> Bool
 pub fn Editor::kill_after(Self) -> Unit
 pub fn Editor::kill_before(Self) -> Unit
+pub fn Editor::layout(Self, width~ : Int, height~ : Int) -> Layout
 pub fn Editor::mouse(Self, @input.MouseEvent) -> Bool
 pub fn Editor::move_down(Self) -> Bool
 pub fn Editor::move_end(Self) -> Unit
@@ -38,6 +40,14 @@ pub fn Editor::move_word_right(Self) -> Unit
 pub fn Editor::position(Self) -> (Int, Int)
 pub fn Editor::set_text(Self, StringView) -> Unit
 pub fn Editor::text(Self) -> String
+
+pub struct Layout {
+  rows : Array[String]
+  cursor : @tui.Cursor
+  top : Int
+  total : Int
+} derive(@debug.Debug)
+pub fn Layout::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

@@ -708,6 +708,70 @@ fn digits(n : Int32) -> Int32 {
 }
 
 ///|
+/// What a window onto the editor shows, as plain data: for an application that
+/// draws the text itself instead of calling `draw`.
+pub struct Layout {
+  /// The text of each visible row, top to bottom.
+  rows : Array[String]
+  /// Where the cursor is among `rows`.
+  cursor : @tui.Cursor
+  /// The index of the first visible row among all the rows of the text.
+  top : Int32
+  /// How many rows the whole text takes.
+  total : Int32
+} derive(Debug)
+
+///|
+pub extend Layout with @debug.Debug::{to_repr}
+
+///|
+/// Bring the cursor's row into a window `height` rows tall by scrolling just
+/// far enough, without leaving blank rows at the bottom when the text got
+/// shorter. Returns the cursor's row among `rows`.
+fn Editor::scroll_to_cursor(
+  self : Editor,
+  rows : Array[Row],
+  height : Int32,
+) -> Int32 {
+  let cursor_row = self.cursor_row(rows)
+  let top = self.top.clamp(min=(cursor_row - height + 1).max(0), max=cursor_row)
+  self.top = top.clamp(min=0, max=(rows.length() - height).max(0))
+  cursor_row
+}
+
+///|
+/// Lay the text out `width` columns wide and return what a window `height`
+/// rows tall shows of it.
+///
+/// This is `draw` without the drawing. Like `draw`, it scrolls to keep the
+/// cursor in the window and records the width for up and down movement, so
+/// call it with the size the text is really shown at. A `height` below one is
+/// treated as one.
+pub fn Editor::layout(self : Editor, width~ : Int32, height~ : Int32) -> Layout {
+  let height = height.max(1)
+  self.width = width
+  let rows = self.rows(width)
+  let cursor_row = self.scroll_to_cursor(rows, height)
+  let visible = []
+  for index in self.top..<(self.top + height).min(rows.length()) {
+    let text = StringBuilder()
+    for glyph in self.glyphs[rows[index].start:rows[index].end] {
+      text.write_string(glyph.text)
+    }
+    visible.push(text.to_string())
+  }
+  {
+    rows: visible,
+    cursor: Cursor(
+      row=cursor_row - self.top,
+      col=self.column(rows[cursor_row].start, self.cursor),
+    ),
+    top: self.top,
+    total: rows.length(),
+  }
+}
+
+///|
 /// Draw the editor in `area` of `frame`: its text, wrapped to the area's
 /// width, and the cursor.
 ///
@@ -755,14 +819,7 @@ pub fn Editor::draw(
     frame.fill(numbers, style=number_style)
   }
   let rows = self.rows(text.width)
-  let cursor_row = self.cursor_row(rows)
-  // Scroll just far enough to bring the cursor's row into the area, and do
-  // not leave blank rows at the bottom when the text got shorter.
-  let top = self.top.clamp(
-    min=(cursor_row - text.height + 1).max(0),
-    max=cursor_row,
-  )
-  self.top = top.clamp(min=0, max=(rows.length() - text.height).max(0))
+  let cursor_row = self.scroll_to_cursor(rows, text.height)
   let cursor_line = rows[cursor_row].line
   // The styles of the line being drawn, from `highlight`: one per glyph,
   // starting at glyph `styled_from`. A wrapped line spans several rows, so
