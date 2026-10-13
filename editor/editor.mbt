@@ -38,15 +38,29 @@ priv struct Glyph {
 let newline : Glyph = { text: "\n", width: 0, }
 
 ///|
-/// The graphemes of `text` as the editor stores them. Line breaks are kept,
-/// tabs become four spaces, and anything the frame would not display, such as
-/// other control characters, is dropped.
-fn edit_glyphs(text : StringView) -> Array[Glyph] {
+/// `text` as the editor keeps it: line breaks are "\n", tabs become four
+/// spaces, and other control characters are removed, since they could not be
+/// shown as text.
+fn clean(text : StringView) -> String {
   let text = text
     .to_owned()
     .replace_all(old="\r\n", new="\n")
     .replace_all(old="\r", new="\n")
     .replace_all(old="\t", new="    ")
+  let cleaned = StringBuilder()
+  for c in text {
+    let code = c.to_int()
+    if c == '\n' || !(code < 0x20 || (code >= 0x7f && code < 0xa0)) {
+      cleaned.write_char(c)
+    }
+  }
+  cleaned.to_string()
+}
+
+///|
+/// Cut cleaned text into glyphs. Every character ends up in some glyph, so
+/// the glyphs always add up to the text.
+fn glyphs_of(text : String) -> Array[Glyph] {
   let glyphs = []
   let mut first = true
   for part in text.split("\n") {
@@ -59,12 +73,12 @@ fn edit_glyphs(text : StringView) -> Array[Glyph] {
     while display.next(position) is Some(next) {
       let grapheme = display.view(position, next).to_owned()
       position = next
-      // Measuring through `Line` keeps the editor's idea of a glyph's width,
-      // and of what is displayable at all, the same as the frame's.
-      let width = @tui.Line::from_text(grapheme).width()
-      if width > 0 {
-        glyphs.push({ text: grapheme, width, })
-      }
+      // Measuring through `Line` keeps the editor's idea of a glyph's width
+      // the same as the frame's.
+      glyphs.push({
+        text: grapheme,
+        width: @tui.Line::from_text(grapheme).width(),
+      })
     }
   }
   glyphs
@@ -73,7 +87,7 @@ fn edit_glyphs(text : StringView) -> Array[Glyph] {
 ///|
 /// Build an editor holding `text`, with the cursor at the end.
 pub fn Editor::Editor(text~ : StringView = "") -> Editor {
-  let glyphs = edit_glyphs(text)
+  let glyphs = glyphs_of(clean(text))
   {
     glyphs,
     cursor: glyphs.length(),
@@ -103,7 +117,7 @@ pub fn Editor::is_empty(self : Editor) -> Bool {
 ///|
 /// Replace the text and put the cursor at the end.
 pub fn Editor::set_text(self : Editor, text : StringView) -> Unit {
-  self.glyphs = edit_glyphs(text)
+  self.glyphs = glyphs_of(clean(text))
   self.cursor = self.glyphs.length()
   self.goal = None
   self.top = 0
@@ -116,25 +130,91 @@ pub fn Editor::clear(self : Editor) -> Unit {
 }
 
 ///|
+/// How many glyphs on each side of an edit are cut again with it, to begin
+/// with. See `Editor::splice`.
+const Context : Int32 = 8
+
+///|
+/// Replace the glyphs in `from..<to` with `text`, which is already clean, and
+/// put the cursor after it.
+///
+/// What counts as one glyph depends on its neighbours: a combining mark joins
+/// the letter before it, and some letters join into a ligature. So the text
+/// around the change is cut into glyphs again, and the cursor is placed by
+/// counting characters rather than glyphs. If that count falls inside a glyph
+/// that formed across the edit, the cursor goes before that glyph.
+///
+/// Cutting a whole line again would make every keystroke cost as much as the
+/// line is long. Instead a window of a few glyphs on each side of the change
+/// is cut again. The result is used when it leaves the glyphs at both edges of
+/// the window as they were, which means the change did not reach that far;
+/// otherwise the window is widened, up to the whole line.
+fn Editor::splice(
+  self : Editor,
+  from : Int32,
+  to : Int32,
+  text : String,
+) -> Unit {
+  let mut line_start = from
+  while line_start > 0 && self.glyphs[line_start - 1].text != "\n" {
+    line_start -= 1
+  }
+  let mut line_end = to
+  while line_end < self.glyphs.length() && self.glyphs[line_end].text != "\n" {
+    line_end += 1
+  }
+  let mut context = Context
+  for ;; {
+    let start = (from - context).max(line_start)
+    let end = (to + context).min(line_end)
+    let changed = StringBuilder()
+    for glyph in self.glyphs[start:from] {
+      changed.write_string(glyph.text)
+    }
+    changed.write_string(text)
+    let target = changed.to_string().length()
+    for glyph in self.glyphs[to:end] {
+      changed.write_string(glyph.text)
+    }
+    let glyphs = glyphs_of(changed.to_string())
+    // An edge is settled when it is the edge of the line, or when the glyph
+    // next to it came out the same as before.
+    let left_settled = start == line_start ||
+      (glyphs.length() > 0 && glyphs[0].text == self.glyphs[start].text)
+    let right_settled = end == line_end ||
+      (
+        glyphs.length() > 0 &&
+        glyphs[glyphs.length() - 1].text == self.glyphs[end - 1].text
+      )
+    if !left_settled || !right_settled {
+      context = context * 4
+      continue
+    }
+    let mut index = 0
+    let mut length = 0
+    while index < glyphs.length() &&
+          length + glyphs[index].text.length() <= target {
+      length += glyphs[index].text.length()
+      index += 1
+    }
+    self.glyphs = [..self.glyphs[:start], ..glyphs, ..self.glyphs[end:]]
+    self.cursor = start + index
+    self.goal = None
+    break
+  }
+}
+
+///|
 /// Insert `text` at the cursor, as typing or pasting it would. It may contain
 /// line breaks.
 pub fn Editor::insert(self : Editor, text : StringView) -> Unit {
-  let inserted = edit_glyphs(text)
-  self.glyphs = [
-    ..self.glyphs[:self.cursor],
-    ..inserted,
-    ..self.glyphs[self.cursor:],
-  ]
-  self.cursor += inserted.length()
-  self.goal = None
+  self.splice(self.cursor, self.cursor, clean(text))
 }
 
 ///|
 /// Remove the glyphs in `from..<to` and leave the cursor where they were.
 fn Editor::remove(self : Editor, from : Int32, to : Int32) -> Unit {
-  self.glyphs = [..self.glyphs[:from], ..self.glyphs[to:]]
-  self.cursor = from
-  self.goal = None
+  self.splice(from, to, "")
 }
 
 ///|

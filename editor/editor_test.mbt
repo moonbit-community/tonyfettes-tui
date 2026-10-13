@@ -879,3 +879,52 @@ test "a click accounts for the number column and for scrolling" {
   // The number column itself is not the text.
   assert_true(!editor.mouse(click(0, 1)))
 }
+
+///|
+test "a combining mark typed after a letter joins it" {
+  let editor = @editor.Editor()
+  editor.insert("e")
+  // U+0301 COMBINING ACUTE ACCENT: no width of its own.
+  editor.insert("\u{301}")
+  editor.insert("x")
+  inspect(editor.text(), content="e\u{301}x")
+  // Two glyphs: the accented letter, then "x".
+  @debug.assert_eq(editor.position(), (0, 2))
+  editor.move_left()
+  editor.move_left()
+  @debug.assert_eq(editor.position(), (0, 0))
+  // Deleting takes the letter and its accent together.
+  editor.delete_after()
+  inspect(editor.text(), content="x")
+}
+
+///|
+test "the cursor stays out of a glyph that forms across an insertion" {
+  // "ل" then "ا" join into the lam-alef ligature, one glyph one column wide.
+  // Inserting "ا" after "ل" in "لx" leaves the cursor after the ligature.
+  let after = @editor.Editor(text="\u{644}x")
+  after.move_left()
+  after.insert("\u{627}")
+  inspect(after.text(), content="\u{644}\u{627}x")
+  @debug.assert_eq(after.position(), (0, 1))
+  // Inserting "ل" before "ا" forms the same ligature around the cursor, which
+  // cannot sit inside it and goes before it.
+  let before = @editor.Editor(text="\u{627}x")
+  before.move_home()
+  before.insert("\u{644}")
+  inspect(before.text(), content="\u{644}\u{627}x")
+  @debug.assert_eq(before.position(), (0, 0))
+}
+
+///|
+test "joining lines can join glyphs across the old line break" {
+  let editor = @editor.Editor(text="\u{644}\n\u{627}")
+  editor.move_to_start()
+  editor.move_end()
+  editor.delete_after()
+  inspect(editor.text(), content="\u{644}\u{627}")
+  @debug.assert_eq(editor.position(), (0, 0))
+  // One glyph is left, so one step reaches the end.
+  editor.move_right()
+  @debug.assert_eq(editor.position(), (0, 1))
+}
