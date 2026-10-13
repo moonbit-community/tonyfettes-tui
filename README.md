@@ -220,8 +220,9 @@ more rows than the area, the editor scrolls to keep the cursor in view.
 Run the examples:
 
 ```sh
-moon run examples/counter   # the snippet above
-moon run examples/hello     # an editor, scrolling, selection and copy
+moon run examples/counter                   # the snippet above
+moon run examples/hello                     # an input box, scrolling, selection and copy
+moon run examples/text_editor -- notes.txt  # a small file editor built on the editor widget
 ```
 
 ## What is not here yet

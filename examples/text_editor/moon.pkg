@@ -1,0 +1,11 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/argparse",
+  "moonbit-community/tui",
+  "moonbit-community/tui/editor",
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")
