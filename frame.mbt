@@ -27,12 +27,6 @@ pub fn Cursor::Cursor(row~ : Int32, col~ : Int32) -> Cursor {
 }
 
 ///|
-pub extend Cursor with Eq::{equal, not_equal}
-
-///|
-pub extend Cursor with @debug.Debug::{to_repr}
-
-///|
 /// One full picture of the screen: a grid of styled cells plus an optional
 /// cursor.
 ///
@@ -174,12 +168,6 @@ pub(all) enum Align {
   Center
   Right
 } derive(Eq, Debug)
-
-///|
-pub extend Align with Eq::{equal, not_equal}
-
-///|
-pub extend Align with @debug.Debug::{to_repr}
 
 ///|
 /// Paint `glyphs` on the first row of `area`, aligned and clipped to it.

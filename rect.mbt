@@ -20,12 +20,6 @@ pub fn Rect::Rect(
 }
 
 ///|
-pub extend Rect with Eq::{equal, not_equal}
-
-///|
-pub extend Rect with @debug.Debug::{to_repr}
-
-///|
 /// The part of `self` that is also inside `other`.
 fn Rect::intersect(self : Rect, other : Rect) -> Rect {
   let row = self.row.max(other.row)

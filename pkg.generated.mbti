@@ -20,8 +20,6 @@ pub(all) enum Align {
   Right
 } derive(Eq, @debug.Debug)
 pub fn Align::equal(Self, Self) -> Bool
-pub fn Align::not_equal(Self, Self) -> Bool
-pub fn Align::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Constraint {
   Length(Int)
@@ -32,8 +30,6 @@ pub(all) enum Constraint {
   Fill(Int)
 } derive(Eq, @debug.Debug)
 pub fn Constraint::equal(Self, Self) -> Bool
-pub fn Constraint::not_equal(Self, Self) -> Bool
-pub fn Constraint::to_repr(Self) -> @debug.Repr
 
 pub struct Cursor {
   row : Int
@@ -41,8 +37,6 @@ pub struct Cursor {
 } derive(Eq, @debug.Debug)
 pub fn Cursor::Cursor(row~ : Int, col~ : Int) -> Self
 pub fn Cursor::equal(Self, Self) -> Bool
-pub fn Cursor::not_equal(Self, Self) -> Bool
-pub fn Cursor::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Flex {
   Start
@@ -51,8 +45,6 @@ pub(all) enum Flex {
   SpaceBetween
 } derive(Eq, @debug.Debug)
 pub fn Flex::equal(Self, Self) -> Bool
-pub fn Flex::not_equal(Self, Self) -> Bool
-pub fn Flex::to_repr(Self) -> @debug.Repr
 
 type Frame
 pub fn Frame::Frame(width~ : Int, height~ : Int) -> Self
@@ -77,8 +69,6 @@ type Line derive(@debug.Debug)
 pub fn Line::Line(Array[Span]) -> Self
 pub fn Line::equal(Self, Self) -> Bool
 pub fn Line::from_text(StringView, style? : Style) -> Self
-pub fn Line::not_equal(Self, Self) -> Bool
-pub fn Line::to_repr(Self) -> @debug.Repr
 pub fn Line::to_text(Self) -> String
 pub fn Line::width(Self) -> Int
 pub fn Line::wrap(Self, Int) -> Array[Self]
@@ -92,8 +82,6 @@ pub struct Rect {
 } derive(Eq, @debug.Debug)
 pub fn Rect::Rect(row~ : Int, col~ : Int, width~ : Int, height~ : Int) -> Self
 pub fn Rect::equal(Self, Self) -> Bool
-pub fn Rect::not_equal(Self, Self) -> Bool
-pub fn Rect::to_repr(Self) -> @debug.Repr
 
 type Scroll
 pub fn Scroll::Scroll(stick_to_bottom? : Bool) -> Self
@@ -116,8 +104,6 @@ pub struct Size {
   height : Int
 } derive(Eq, @debug.Debug)
 pub fn Size::equal(Self, Self) -> Bool
-pub fn Size::not_equal(Self, Self) -> Bool
-pub fn Size::to_repr(Self) -> @debug.Repr
 
 pub struct Span {
   text : String
@@ -125,8 +111,6 @@ pub struct Span {
 } derive(Eq, @debug.Debug)
 pub fn Span::Span(StringView, style? : Style) -> Self
 pub fn Span::equal(Self, Self) -> Bool
-pub fn Span::not_equal(Self, Self) -> Bool
-pub fn Span::to_repr(Self) -> @debug.Repr
 
 pub struct Style {
   fg : @color.Color
@@ -138,8 +122,6 @@ pub struct Style {
 } derive(Eq, @debug.Debug)
 pub fn Style::Style(fg? : @color.Color, bg? : @color.Color, bold? : Bool, italic? : Bool, underline? : Bool, reverse? : Bool) -> Self
 pub fn Style::equal(Self, Self) -> Bool
-pub fn Style::not_equal(Self, Self) -> Bool
-pub fn Style::to_repr(Self) -> @debug.Repr
 
 type Terminal
 pub async fn Terminal::draw(Self, Frame) -> Unit

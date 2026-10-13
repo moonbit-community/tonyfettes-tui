@@ -6,12 +6,6 @@ pub struct Size {
 } derive(Eq, Debug)
 
 ///|
-pub extend Size with Eq::{equal, not_equal}
-
-///|
-pub extend Size with @debug.Debug::{to_repr}
-
-///|
 /// A full-screen terminal session.
 ///
 /// A `Terminal` exists only inside `with_terminal`. Draw complete frames to it

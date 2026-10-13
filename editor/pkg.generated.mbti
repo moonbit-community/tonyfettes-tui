@@ -47,7 +47,6 @@ pub struct Layout {
   top : Int
   total : Int
 } derive(@debug.Debug)
-pub fn Layout::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

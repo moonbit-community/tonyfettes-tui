@@ -17,12 +17,6 @@ pub(all) enum Constraint {
 } derive(Eq, Debug)
 
 ///|
-pub extend Constraint with Eq::{equal, not_equal}
-
-///|
-pub extend Constraint with @debug.Debug::{to_repr}
-
-///|
 /// Where the pieces of a layout sit when they do not use all of the space,
 /// which happens only when none of them is a `Fill` or a `Min`.
 pub(all) enum Flex {
@@ -36,12 +30,6 @@ pub(all) enum Flex {
   /// them.
   SpaceBetween
 } derive(Eq, Debug)
-
-///|
-pub extend Flex with Eq::{equal, not_equal}
-
-///|
-pub extend Flex with @debug.Debug::{to_repr}
 
 ///|
 priv enum Direction {

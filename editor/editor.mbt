@@ -722,9 +722,6 @@ pub struct Layout {
 } derive(Debug)
 
 ///|
-pub extend Layout with @debug.Debug::{to_repr}
-
-///|
 /// Bring the cursor's row into a window `height` rows tall by scrolling just
 /// far enough, without leaving blank rows at the bottom when the text got
 /// shorter. Returns the cursor's row among `rows`.

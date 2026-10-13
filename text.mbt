@@ -52,12 +52,6 @@ pub fn Span::Span(text : StringView, style~ : Style = Style()) -> Span {
 }
 
 ///|
-pub extend Span with Eq::{equal, not_equal}
-
-///|
-pub extend Span with @debug.Debug::{to_repr}
-
-///|
 /// One row of text: spans laid out left to right.
 ///
 /// A line knows how wide it is and how to wrap itself, so placing text never
@@ -90,12 +84,6 @@ pub fn Line::from_text(text : StringView, style~ : Style = Style()) -> Line {
 pub impl Eq for Line with fn equal(self, other) {
   self.spans == other.spans
 }
-
-///|
-pub extend Line with Eq::{equal, not_equal}
-
-///|
-pub extend Line with @debug.Debug::{to_repr}
 
 ///|
 fn Line::glyphs(self : Line) -> Array[Glyph] {

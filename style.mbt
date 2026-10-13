@@ -22,9 +22,3 @@ pub fn Style::Style(
 ) -> Style {
   { fg, bg, bold, italic, underline, reverse, }
 }
-
-///|
-pub extend Style with Eq::{equal, not_equal}
-
-///|
-pub extend Style with @debug.Debug::{to_repr}
