@@ -2,5 +2,5 @@
 _build/
 .mooncakes/
 
-# Local checkout of unreleased dependencies, see README
+# Local checkouts of dependencies under development
 .deps/

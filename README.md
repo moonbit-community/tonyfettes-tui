@@ -201,22 +201,12 @@ moon run examples/hello     # input, wrapping, scrolling, selection and copy
 
 ## Development
 
-The library uses `tty` APIs that are merged but not yet published
-(`Command` deriving `Eq`/`Debug`, cursor save/restore, clipboard write). Until
-`tty` 0.5.0 is released, `moon.work` builds against a local checkout:
-
-```sh
-git clone --depth 1 https://github.com/moonbit-community/tty.git .deps/tty
-```
-
-`.deps/` is ignored by git. Once the release is out, bump the `tty` version in
-`moon.mod` and delete `moon.work`.
+The library builds against the released `moonbit-community/tty` on mooncakes,
+so a checkout is enough:
 
 ```sh
 moon fmt
 moon check --deny-warn
-moon test .
+moon test
 moon info
 ```
-
-`moon test` without the `.` also runs the tests of the `tty` checkout.
