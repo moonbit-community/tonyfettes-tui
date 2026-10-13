@@ -115,7 +115,7 @@ pub fn Style::to_repr(Self) -> @debug.Repr
 
 type Terminal
 pub async fn Terminal::draw(Self, Frame) -> Unit
-pub async fn Terminal::read_event(Self) -> @tty.Event
+pub async fn Terminal::read_event(Self, esc_timeout_ms? : Int) -> @tty.Event
 pub async fn Terminal::set_clipboard(Self, StringView) -> Unit
 pub fn Terminal::size(Self) -> Size
 

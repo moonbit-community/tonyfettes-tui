@@ -97,8 +97,15 @@ pub async fn Terminal::draw(self : Terminal, frame : Frame) -> Unit {
 ///
 /// After a `Resize` event `size` reports the new size, and the next `draw`
 /// repaints the whole screen.
-pub async fn Terminal::read_event(self : Terminal) -> @tty.Event {
-  let event = self.tty.read_event()
+///
+/// A lone Escape byte could be the Escape key or the start of a longer key
+/// sequence; `esc_timeout_ms` is how long to wait for the rest before deciding
+/// it was the key.
+pub async fn Terminal::read_event(
+  self : Terminal,
+  esc_timeout_ms~ : Int32 = 50,
+) -> @tty.Event {
+  let event = self.tty.read_event(esc_timeout_ms~)
   if event is Resize(window) {
     self.size = { width: window.cols, height: window.rows, }
     self.shown = None
