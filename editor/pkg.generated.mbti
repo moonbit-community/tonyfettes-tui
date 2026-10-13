@@ -29,6 +29,8 @@ pub fn Editor::move_end(Self) -> Unit
 pub fn Editor::move_home(Self) -> Unit
 pub fn Editor::move_left(Self) -> Unit
 pub fn Editor::move_right(Self) -> Unit
+pub fn Editor::move_to_end(Self) -> Unit
+pub fn Editor::move_to_start(Self) -> Unit
 pub fn Editor::move_up(Self) -> Bool
 pub fn Editor::move_word_left(Self) -> Unit
 pub fn Editor::move_word_right(Self) -> Unit

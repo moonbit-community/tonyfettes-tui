@@ -238,6 +238,18 @@ pub fn Editor::move_end(self : Editor) -> Unit {
 }
 
 ///|
+/// Move the cursor to the very start of the text.
+pub fn Editor::move_to_start(self : Editor) -> Unit {
+  self.move_to(0)
+}
+
+///|
+/// Move the cursor to the very end of the text.
+pub fn Editor::move_to_end(self : Editor) -> Unit {
+  self.move_to(self.glyphs.length())
+}
+
+///|
 /// Delete the grapheme before the cursor.
 pub fn Editor::delete_before(self : Editor) -> Unit {
   if self.cursor > 0 {
@@ -396,7 +408,8 @@ pub fn Editor::height(self : Editor, width~ : Int32, max? : Int32) -> Int32 {
 /// - Text is inserted. Shift+Enter, Alt+Enter, and Ctrl+J insert a line break.
 /// - Left/Right or Ctrl+B/Ctrl+F move by one; Alt or Ctrl with Left/Right, or
 ///   Alt+B/Alt+F, move by a word.
-/// - Home/End or Ctrl+A/Ctrl+E move to the start or end of the line.
+/// - Home/End or Ctrl+A/Ctrl+E move to the start or end of the line;
+///   Ctrl+Home/Ctrl+End move to the start or end of the text.
 /// - Up/Down or Ctrl+P/Ctrl+N move between rows.
 /// - Backspace or Ctrl+H, and Delete or Ctrl+D, delete one grapheme.
 /// - Ctrl+W or Alt+Backspace deletes the word before the cursor; Ctrl+U and
@@ -425,6 +438,8 @@ pub fn Editor::key(self : Editor, key : @input.KeyEvent) -> Bool {
     Right => self.move_right()
     Char('b') if ctrl => self.move_left()
     Char('f') if ctrl => self.move_right()
+    Home if ctrl => self.move_to_start()
+    End if ctrl => self.move_to_end()
     Home => self.move_home()
     End => self.move_end()
     Char('a') if ctrl => self.move_home()

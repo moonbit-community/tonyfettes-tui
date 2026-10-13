@@ -1,15 +1,23 @@
 ///|
-/// The rows an area of `width` by `height` shows of `editor`, with a `^`
-/// under the cursor on the row after the one it is on.
-fn edited(editor : Editor, width~ : Int32 = 12, height~ : Int32 = 4) -> String {
-  editor.width = width
-  let view = editor.view(height~)
+/// Draw `editor` into a frame of `width` by `height` and return the rows it
+/// shows, with a `^` under the cursor on the row after the one it is on. Blank
+/// rows below the text and the cursor are left out.
+fn edited(
+  editor : @editor.Editor,
+  width~ : Int32 = 12,
+  height~ : Int32 = 4,
+) -> String {
+  let frame = @tui.Frame(width~, height~)
+  editor.draw(frame, frame.area())
   let rows = []
-  for index, text in view.rows {
-    rows.push(text)
-    if index == view.cursor_row {
-      rows.push(" ".repeat(view.cursor_col) + "^")
+  for index, text in frame.to_text().split("\n").collect() {
+    rows.push(text.to_owned())
+    if frame.cursor() is Some(cursor) && cursor.row == index {
+      rows.push(" ".repeat(cursor.col) + "^")
     }
+  }
+  while rows.length() > 0 && rows[rows.length() - 1] == "" {
+    ignore(rows.pop())
   }
   rows.join("\n")
 }
@@ -35,7 +43,7 @@ fn typed(text : String) -> @input.KeyEvent {
 
 ///|
 test "typing inserts at the cursor" {
-  let editor = Editor()
+  let editor = @editor.Editor()
   assert_true(editor.is_empty())
   assert_true(editor.key(typed("h")))
   assert_true(editor.key(typed("i")))
@@ -66,7 +74,7 @@ test "typing inserts at the cursor" {
 
 ///|
 test "moving and deleting go by grapheme, so a wide one is a single step" {
-  let editor = Editor(text="a你b")
+  let editor = @editor.Editor(text="a你b")
   editor.move_left()
   editor.move_left()
   inspect(
@@ -108,7 +116,7 @@ test "moving and deleting go by grapheme, so a wide one is a single step" {
 
 ///|
 test "word movement and deletion" {
-  let editor = Editor(text="foo bar_baz  你好 qux")
+  let editor = @editor.Editor(text="foo bar_baz  你好 qux")
   editor.move_word_left()
   inspect(
     edited(editor, width=30),
@@ -154,7 +162,7 @@ test "word movement and deletion" {
 
 ///|
 test "home, end and kills work on the line between line breaks" {
-  let editor = Editor(text="first\nsecond line\nthird")
+  let editor = @editor.Editor(text="first\nsecond line\nthird")
   editor.move_up() |> ignore
   editor.move_home()
   for _ in 0..<6 {
@@ -211,7 +219,7 @@ test "home, end and kills work on the line between line breaks" {
 
 ///|
 test "long lines wrap, leaving the last column for the cursor" {
-  let editor = Editor(text="abcdefghij")
+  let editor = @editor.Editor(text="abcdefghij")
   // Width 6 holds five glyphs per row.
   inspect(
     edited(editor, width=6),
@@ -226,7 +234,7 @@ test "long lines wrap, leaving the last column for the cursor" {
   @debug.assert_eq(editor.height(width=11), 1)
   @debug.assert_eq(editor.height(width=10), 2)
   // A wide glyph that does not fit moves to the next row whole.
-  let wide = Editor(text="abcd你好")
+  let wide = @editor.Editor(text="abcd你好")
   inspect(
     edited(wide, width=6),
     content=(
@@ -239,7 +247,7 @@ test "long lines wrap, leaving the last column for the cursor" {
 
 ///|
 test "at a wrap point the cursor is shown at the start of the next row" {
-  let editor = Editor(text="abcdefgh")
+  let editor = @editor.Editor(text="abcdefgh")
   for _ in 0..<3 {
     editor.move_left()
   }
@@ -256,7 +264,7 @@ test "at a wrap point the cursor is shown at the start of the next row" {
 
 ///|
 test "up and down keep their column through shorter rows" {
-  let editor = Editor(text="a long first line\nxy\nanother long line")
+  let editor = @editor.Editor(text="a long first line\nxy\nanother long line")
   ignore(edited(editor, width=30))
   editor.move_home()
   for _ in 0..<9 {
@@ -309,7 +317,7 @@ test "up and down keep their column through shorter rows" {
 
 ///|
 test "up and down move between the rows of one wrapped line" {
-  let editor = Editor(text="abcdefghijklm")
+  let editor = @editor.Editor(text="abcdefghijklm")
   ignore(edited(editor, width=6))
   // Rows: "abcde", "fghij", "klm". The cursor starts after "m".
   assert_true(editor.move_up())
@@ -356,7 +364,7 @@ test "up and down move between the rows of one wrapped line" {
 
 ///|
 test "moving up onto a full wrapped row stays on that row" {
-  let editor = Editor(text="abcdefghij\nxxxxx")
+  let editor = @editor.Editor(text="abcdefghij\nxxxxx")
   // Rows: "abcde", "fghij", "xxxxx". The cursor starts at column 5.
   ignore(edited(editor, width=6))
   assert_true(editor.move_up())
@@ -398,7 +406,7 @@ test "moving up onto a full wrapped row stays on that row" {
 
 ///|
 test "the view scrolls to keep the cursor row visible" {
-  let editor = Editor(text="one\ntwo\nthree\nfour\nfive")
+  let editor = @editor.Editor(text="one\ntwo\nthree\nfour\nfive")
   inspect(
     edited(editor, height=2),
     content=(
@@ -451,7 +459,7 @@ test "the view scrolls to keep the cursor row visible" {
 
 ///|
 test "inserted text keeps line breaks and drops other control characters" {
-  let editor = Editor()
+  let editor = @editor.Editor()
   editor.insert("a\r\nb\rc\td\u{1b}[0me")
   inspect(
     editor.text(),
@@ -474,7 +482,7 @@ test "inserted text keeps line breaks and drops other control characters" {
 
 ///|
 test "set_text and clear replace the text" {
-  let editor = Editor(text="old text")
+  let editor = @editor.Editor(text="old text")
   editor.move_home()
   editor.set_text("new")
   inspect(
@@ -497,7 +505,7 @@ test "set_text and clear replace the text" {
 
 ///|
 test "key bindings" {
-  let editor = Editor(text="hello world")
+  let editor = @editor.Editor(text="hello world")
   assert_true(editor.key(key(Char('a'), ctrl=true)))
   assert_true(editor.key(key(Right)))
   assert_true(editor.key(key(Char('f'), ctrl=true)))
@@ -522,7 +530,7 @@ test "key bindings" {
   inspect(
     edited(editor),
     content=(
-      #|hello 
+      #|hello
       #|      ^
     ),
   )
@@ -562,8 +570,45 @@ test "key bindings" {
 }
 
 ///|
+test "moving to the start and end of the whole text" {
+  let editor = @editor.Editor(text="first\nsecond\nthird")
+  editor.move_to_start()
+  inspect(
+    edited(editor),
+    content=(
+      #|first
+      #|^
+      #|second
+      #|third
+    ),
+  )
+  editor.move_to_end()
+  inspect(
+    edited(editor),
+    content=(
+      #|first
+      #|second
+      #|third
+      #|     ^
+    ),
+  )
+  assert_true(editor.key(key(Home, ctrl=true)))
+  editor.insert(">")
+  assert_true(editor.key(key(End, ctrl=true)))
+  editor.insert("<")
+  inspect(
+    editor.text(),
+    content=(
+      #|>first
+      #|second
+      #|third<
+    ),
+  )
+}
+
+///|
 test "keys the editor has no use for are reported unused" {
-  let editor = Editor(text="ab")
+  let editor = @editor.Editor(text="ab")
   // Plain Enter is the application's to interpret.
   assert_true(!editor.key(key(Enter)))
   // Nothing to delete, nowhere to go.
@@ -592,7 +637,7 @@ test "keys the editor has no use for are reported unused" {
 
 ///|
 test "draw paints the visible rows into the area it is given" {
-  let editor = Editor(text="one\ntwo\nthree")
+  let editor = @editor.Editor(text="one\ntwo\nthree")
   let frame = @tui.Frame(width=8, height=4)
   editor.draw(frame, @tui.Rect(row=1, col=2, width=5, height=2))
   inspect(

@@ -186,12 +186,13 @@ Input(Key(key)) =>
 Input(Paste(text)) => state.editor.insert(text)
 ```
 
-`key` applies the usual terminal bindings: arrows, Home/End, Backspace and
-Delete, the Emacs chords (Ctrl+A/E/B/F/P/N/H/D/U/K/W), and word movement with
-Alt or Ctrl. It returns whether it used the key. It leaves a plain Enter alone,
-so the application decides what submitting means; Shift+Enter, Alt+Enter, and
-Ctrl+J insert a line break. Up on the first row and Down on the last are also
-left alone, which is where an application can recall history.
+`key` applies the usual terminal bindings: arrows, Home/End (with Ctrl, to the
+start or end of the whole text), Backspace and Delete, the Emacs chords
+(Ctrl+A/E/B/F/P/N/H/D/U/K/W), and word movement with Alt or Ctrl. It returns
+whether it used the key. It leaves a plain Enter alone, so the application
+decides what submitting means; Shift+Enter, Alt+Enter, and Ctrl+J insert a line
+break. Up on the first row and Down on the last are also left alone, which is
+where an application can recall history.
 
 Long lines wrap at the area's width, character by character. When the text has
 more rows than the area, the editor scrolls to keep the cursor in view.
