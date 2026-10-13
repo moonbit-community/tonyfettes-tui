@@ -41,8 +41,8 @@ fn file_name(path : String?) -> String {
 /// The whole screen as a function of the state and the terminal size.
 fn view(state : State, size : @tui.Size) -> @tui.Frame {
   let frame = @tui.Frame(width=size.width, height=size.height)
-  guard! frame.area().split_rows([Fixed(1), Fill, Fixed(1), Fixed(1)])
-    is [tabs, body, status, hints]
+  let rows = @tui.Layout::vertical([Length(1), Fill(1), Length(1), Length(1)])
+  guard! rows.split(frame.area()) is [tabs, body, status, hints]
   // The tab bar: one tab for the open file, in the editor's own background so
   // it reads as attached to the text below it.
   let tab = @tui.Line([
@@ -76,8 +76,8 @@ fn view(state : State, size : @tui.Size) -> @tui.Frame {
     Span(" \{state.path.unwrap_or("no file")}", style=status_style),
   ])
   frame.fill(status, style=status_style)
-  guard! status.split_cols([Fill, Fixed(right.width())])
-    is [left_area, right_area]
+  let columns = @tui.Layout::horizontal([Fill(1), Length(right.width())])
+  guard! columns.split(status) is [left_area, right_area]
   frame.line(left_area, left)
   frame.line(right_area, right)
   frame.fill(hints, style=chrome_style)

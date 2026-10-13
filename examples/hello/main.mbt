@@ -25,18 +25,22 @@ fn view(state : State, size : @tui.Size) -> @tui.Frame {
     width=size.width - marker.width(),
     max=4,
   )
-  guard! frame
-    .area()
-    .split_rows([Fixed(1), Fixed(1), Fill, Fixed(editor_rows), Fixed(1)])
-    is [header, _, body, prompt, footer]
+  let rows = @tui.Layout::vertical([
+    Length(1),
+    Length(1),
+    Fill(1),
+    Length(editor_rows),
+    Length(1),
+  ])
+  guard! rows.split(frame.area()) is [header, _, body, prompt, footer]
   // The size label takes the columns it needs; the title gets the rest and is
   // cut off rather than overlapping when the terminal is narrow.
   let size_label = @tui.Line::from_text(
     " \{size.width}x\{size.height}",
     style=dim,
   )
-  guard! header.split_cols([Fill, Fixed(size_label.width())])
-    is [title_area, size_area]
+  let columns = @tui.Layout::horizontal([Fill(1), Length(size_label.width())])
+  guard! columns.split(header) is [title_area, size_area]
   frame.line(
     title_area,
     @tui.Line::from_text("moonbit-community/tui", style=title),
@@ -51,8 +55,8 @@ fn view(state : State, size : @tui.Size) -> @tui.Frame {
     }
   }
   frame.lines(body, history, scroll=state.scroll, selection=state.selection)
-  guard! prompt.split_cols([Fixed(marker.width()), Fill])
-    is [marker_area, editor_area]
+  let columns = @tui.Layout::horizontal([Length(marker.width()), Fill(1)])
+  guard! columns.split(prompt) is [marker_area, editor_area]
   frame.line(marker_area, marker)
   state.editor.draw(frame, editor_area)
   // The hint on the right takes its columns first, so the help text is cut
@@ -65,7 +69,8 @@ fn view(state : State, size : @tui.Size) -> @tui.Frame {
     " ↓ 下面还有"
   }
   let more = @tui.Line::from_text(more, style=dim)
-  guard! footer.split_cols([Fill, Fixed(more.width())]) is [help, more_area]
+  let columns = @tui.Layout::horizontal([Fill(1), Length(more.width())])
+  guard! columns.split(footer) is [help, more_area]
   frame.line(
     help,
     @tui.Line::from_text(

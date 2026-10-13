@@ -806,7 +806,8 @@ pub fn Editor::draw(
   } else {
     0
   }
-  guard area.split_cols([Fixed(gutter), Fill]) is [numbers, text] else {
+  guard @tui.Layout::horizontal([Length(gutter), Fill(1)]).split(area)
+    is [numbers, text] else {
     return
   }
   self.width = text.width

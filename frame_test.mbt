@@ -74,7 +74,9 @@ test "overwriting half of a wide grapheme blanks the other half" {
 ///|
 test "line paints on the first row of its area with alignment" {
   let frame = @tui.Frame(width=12, height=3)
-  let rows = frame.area().split_rows([Fixed(1), Fixed(1), Fixed(1)])
+  let rows = @tui.Layout::vertical([Length(1), Length(1), Length(1)]).split(
+    frame.area(),
+  )
   frame.line(rows[0], @tui.Line::from_text("left"))
   frame.line(rows[1], @tui.Line::from_text("mid"), align=Center)
   frame.line(rows[2], @tui.Line::from_text("right"), align=Right)

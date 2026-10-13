@@ -31,7 +31,8 @@ fn view(state : State, size : @tui.Size) -> @tui.Frame {
   let frame = @tui.Frame(width=size.width, height=size.height)
   let dim = @tui.Style(fg=Basic(BrightBlack))
   // Two rows at the top; the rest of the screen stays blank.
-  guard! frame.area().split_rows([Fixed(1), Fixed(1), Fill]) is [count, help, _]
+  let rows = @tui.Layout::vertical([Length(1), Length(1), Fill(1)])
+  guard! rows.split(frame.area()) is [count, help, _]
   frame.line(count, @tui.Line([Span("count: "), Span("\{state.count}")]))
   frame.line(help, @tui.Line::from_text("space: +1 · Esc: quit", style=dim))
   frame
@@ -67,20 +68,49 @@ where the cursor is, and `.style_at(row~, col~)` the style of a cell.
 
 There are two layers, and neither involves coordinates.
 
-**Areas** say where things go. `frame.area()` is the whole frame;
-`split_rows` and `split_cols` cut an area into pieces that are either
-`Fixed(n)` or `Fill` (an equal share of what is left). Destructure the result
-to name the pieces:
+**Areas** say where things go. `frame.area()` is the whole frame, and a
+`Layout` divides an area into smaller ones: `Layout::vertical` stacks them top
+to bottom, `Layout::horizontal` puts them side by side. Each piece has a
+constraint, and splitting an area returns one area per constraint.
+Destructure the result to name them:
 
 ```moonbit
-guard! frame.area().split_rows([Fixed(1), Fill, Fixed(1)])
-  is [header, body, footer]
-guard! header.split_cols([Fill, Fixed(8)]) is [title, clock]
+let rows = @tui.Layout::vertical([Length(1), Fill(1), Length(1)])
+guard! rows.split(frame.area()) is [header, body, footer]
+let columns = @tui.Layout::horizontal([Fill(1), Length(8)], spacing=1)
+guard! columns.split(header) is [title, clock]
 ```
 
-A split always returns one area per length, so the pattern matches as long as
-it lists the same number of names. `guard!` panics if it does not; write
+The pattern matches as long as it lists as many names as there are
+constraints. `guard!` panics if it does not; write
 `guard ... is [...] else { ... }` to handle that case instead.
+
+| Constraint | Size |
+| --- | --- |
+| `Length(n)` | exactly `n` |
+| `Percentage(p)` | `p` percent of the space |
+| `Ratio(a, b)` | `a / b` of the space |
+| `Min(n)` | at least `n`; grows when no `Fill` claims the leftover space |
+| `Max(n)` | at most `n`; takes `n` when there is room |
+| `Fill(w)` | a share of the leftover space, in proportion to its weight `w` |
+
+The sizes are worked out in order, and the rule is short enough to predict.
+Each piece asks for a size: its number, its share, or nothing for a `Fill`. The
+pieces are served first to last, so when the space runs out it is the later
+ones that shrink. What is left over goes to the `Fill` pieces by weight; if
+there are none, to the `Min` pieces equally; and if there are none of those
+either it stays empty.
+
+`spacing` puts gaps between the pieces and `margin` a border of empty cells
+around them. `flex` says where the pieces go when space stays empty: `Start`,
+`Center`, `End`, or `SpaceBetween`. That is how to center a dialog:
+
+```moonbit
+let rows = @tui.Layout::vertical([Length(5)], flex=Center)
+guard! rows.split(frame.area()) is [band]
+let columns = @tui.Layout::horizontal([Length(40)], flex=Center)
+guard! columns.split(band) is [dialog]
+```
 
 **Lines** say what goes there. A `Line` is a row of `Span`s, each with its own
 style. A line knows its `width()` in display columns and can `wrap(width)`
@@ -172,8 +202,10 @@ draw itself into an area and how to take events.
 ```moonbit
 // In view. The input grows with its text, so measure it before splitting.
 let rows = state.editor.height(width=size.width - 2, max=4)
-guard! frame.area().split_rows([Fill, Fixed(rows)]) is [body, input]
-guard! input.split_cols([Fixed(2), Fill]) is [marker, text]
+let layout = @tui.Layout::vertical([Fill(1), Length(rows)])
+guard! layout.split(frame.area()) is [body, input]
+let layout = @tui.Layout::horizontal([Length(2), Fill(1)])
+guard! layout.split(input) is [marker, text]
 frame.line(marker, @tui.Line::from_text("> "))
 state.editor.draw(frame, text)
 
@@ -222,7 +254,8 @@ cursor to where the left button was pressed.
 - `Span`, `Line`: styled text with `width`, `wrap`, and `to_text`. Text is
   measured in display columns, so CJK and other wide graphemes take two cells.
   Wrapping breaks at spaces, and anywhere for text without spaces.
-- `Rect`, `Length`: areas and `split_rows` / `split_cols`.
+- `Rect`, `Layout`, `Constraint`, `Flex`: areas, and dividing them along one
+  direction with spacing, a margin, and a choice of where unused space goes.
 - `Frame`: `area`, `line`, `lines`, `fill`, `set_cursor`, and `text` for
   painting at an exact cell; `to_text`, `cursor`, and `style_at` for reading a
   frame back in tests. Control characters never become cell content.
@@ -260,8 +293,9 @@ moon run examples/text_editor -- frame.mbt  # a code editor: highlighting, line 
 - In the editor: undo, selecting text, word wrapping, and horizontal
   scrolling.
 - Other widgets, such as lists and menus.
-- Padding, borders, and constraint-based layout. Areas only split into fixed
-  and fill pieces.
+- Padding and borders as part of drawing, and layouts that size a piece from
+  its content. A piece whose size depends on what is in it is measured first
+  and given a `Length`.
 - An inline (non-full-screen) mode. Full-screen is the only mode.
 
 ## Development
