@@ -243,7 +243,7 @@ Run the examples:
 ```sh
 moon run examples/counter                   # the snippet above
 moon run examples/hello                     # an input box, scrolling, selection and copy
-moon run examples/text_editor -- notes.txt  # a small file editor built on the editor widget
+moon run examples/text_editor -- frame.mbt  # a code editor: highlighting, line numbers, mouse
 ```
 
 ## What is not here yet

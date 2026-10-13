@@ -4,7 +4,12 @@ import {
   "moonbitlang/core/argparse",
   "moonbit-community/tui",
   "moonbit-community/tui/editor",
+  "moonbit-community/tty/color",
 }
+
+import {
+  "moonbitlang/core/debug",
+} for "wbtest"
 
 supported_targets = "native"
 

@@ -1,7 +1,8 @@
-// A small text file editor: one `Editor` filling the screen between a title
-// bar and a status row.
+// A small text file editor: one `Editor` filling the screen between a tab bar
+// and a status row, with line numbers, syntax highlighting for MoonBit, and
+// the mouse.
 //
-//   moon run examples/text_editor -- notes.txt
+//   moon run examples/text_editor -- examples/text_editor/main.mbt
 //
 // It is an example of the editor widget, not a tool to trust with files that
 // matter: the widget keeps tabs as four spaces and drops other control
@@ -14,7 +15,7 @@ struct State {
   path : String?
   // The text as it was last read from or written to the file.
   mut saved : String
-  // Shown in the status row until the next key press.
+  // Shown in the bottom row until the next key press.
   mut message : String?
   // Ctrl+Q was just pressed with unsaved changes; pressing it again quits.
   mut confirm_quit : Bool
@@ -26,31 +27,75 @@ fn State::modified(self : State) -> Bool {
 }
 
 ///|
+/// The file's name without its directories, for the tab.
+fn file_name(path : String?) -> String {
+  guard path is Some(path) else { return "untitled" }
+  if path.rev_find("/") is Some(slash) {
+    path[slash + 1:].to_owned()
+  } else {
+    path
+  }
+}
+
+///|
 /// The whole screen as a function of the state and the terminal size.
 fn view(state : State, size : @tui.Size) -> @tui.Frame {
   let frame = @tui.Frame(width=size.width, height=size.height)
-  let bar = @tui.Style(reverse=true)
-  let dim = @tui.Style(fg=Basic(BrightBlack))
-  guard! frame.area().split_rows([Fixed(1), Fill, Fixed(1)])
-    is [title, body, status]
-  // Fill first so the bar spans the full width, then write the name over it.
-  frame.fill(title, style=bar)
-  let name = state.path.unwrap_or("[no file]")
-  let mark = if state.modified() { " (modified)" } else { "" }
-  frame.line(title, @tui.Line::from_text(" \{name}\{mark}", style=bar))
-  state.editor.draw(frame, body)
+  guard! frame.area().split_rows([Fixed(1), Fill, Fixed(1), Fixed(1)])
+    is [tabs, body, status, hints]
+  // The tab bar: one tab for the open file, in the editor's own background so
+  // it reads as attached to the text below it.
+  let tab = @tui.Line([
+    Span("  \{file_name(state.path)} ", style=tab_style),
+    Span(if state.modified() { "● " } else { "  " }, style=modified_style),
+  ])
+  frame.fill(tabs, style=chrome_style)
+  frame.line(tabs, tab)
+  // The text. Everything about how it looks is passed to the widget, which
+  // does the wrapping, the scrolling and the cursor.
+  let language = language(state.path)
+  state.editor.draw(
+    frame,
+    body,
+    style=text_style,
+    highlight?=language.map(language => language.1),
+    line_numbers=line_number_style,
+    current_line=current_line_style,
+  )
+  // The status row: what is open on the left, where the cursor is on the
+  // right. The right side takes the columns it needs first, so on a narrow
+  // terminal it is the path that gets cut.
+  let (line, column) = state.editor.position()
+  let lines = state.editor.text().split("\n").count()
+  let right = @tui.Line::from_text(
+    " \{language.map(language => language.0).unwrap_or("Plain Text")}   Ln \{line + 1}, Col \{column + 1}   \{lines} lines ",
+    style=status_style,
+  )
+  let left = @tui.Line([
+    Span(" EDIT ", style=badge_style),
+    Span(" \{state.path.unwrap_or("no file")}", style=status_style),
+  ])
+  frame.fill(status, style=status_style)
+  guard! status.split_cols([Fill, Fixed(right.width())])
+    is [left_area, right_area]
+  frame.line(left_area, left)
+  frame.line(right_area, right)
+  frame.fill(hints, style=chrome_style)
   frame.line(
-    status,
+    hints,
     @tui.Line::from_text(
-      state.message.unwrap_or("Ctrl+S save · Ctrl+Q quit"),
-      style=dim,
+      " " +
+      state.message.unwrap_or(
+        "Ctrl+S save · Ctrl+Q quit · click to move the cursor · wheel to scroll",
+      ),
+      style=chrome_style,
     ),
   )
   frame
 }
 
 ///|
-/// Write the text to the file and report the outcome in the status row.
+/// Write the text to the file and report the outcome in the bottom row.
 async fn save(state : State) -> Unit {
   guard state.path is Some(path) else {
     state.message = Some("No file name: start the editor with a path to save.")
@@ -66,6 +111,22 @@ async fn save(state : State) -> Unit {
   }
   state.saved = text
   state.message = Some("Saved \{path}")
+}
+
+///|
+/// Start a new line with the indentation of the one the cursor is on.
+fn newline_keeping_indent(editor : @editor.Editor) -> Unit {
+  let (line, _) = editor.position()
+  let indent = StringBuilder()
+  if editor.text().split("\n").drop(line).head() is Some(current) {
+    for c in current {
+      if c != ' ' {
+        break
+      }
+      indent.write_char(c)
+    }
+  }
+  editor.insert("\n" + indent.to_string())
 }
 
 ///|
@@ -100,7 +161,7 @@ async fn main {
   }
   // A new editor has its cursor at the end; a file is read from the top.
   state.editor.move_to_start()
-  @tui.with_terminal(terminal => {
+  @tui.with_terminal(mouse=true, terminal => {
     for ;; {
       terminal.draw(view(state, terminal.size()))
       match terminal.read_event() {
@@ -120,12 +181,23 @@ async fn main {
               }
             Char('s') if key.modifiers.ctrl() => save(state)
             // The widget leaves a plain Enter to the application. In an input
-            // box it would submit; here it is just a line break.
-            Enter => state.editor.insert("\n")
+            // box it would submit; here it is a line break.
+            Enter => newline_keeping_indent(state.editor)
+            Tab => state.editor.insert("  ")
             _ => ignore(state.editor.key(key))
           }
         }
         Input(Paste(text)) => state.editor.insert(text)
+        // The wheel moves the cursor a few rows, and the view follows it.
+        Input(Mouse({ kind: Scroll(Up), .. })) =>
+          for _ in 0..<3 {
+            ignore(state.editor.move_up())
+          }
+        Input(Mouse({ kind: Scroll(Down), .. })) =>
+          for _ in 0..<3 {
+            ignore(state.editor.move_down())
+          }
+        Input(Mouse(mouse)) => ignore(state.editor.mouse(mouse))
         // A resize needs nothing: the next turn draws at the new size.
         _ => ()
       }
