@@ -1,6 +1,7 @@
 import {
   "moonbitlang/async",
   "moonbit-community/tui",
+  "moonbit-community/tui/editor",
 }
 
 supported_targets = "native"

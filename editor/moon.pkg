@@ -1,0 +1,11 @@
+import {
+  "moonbit-community/displaytext",
+  "moonbit-community/tty/input",
+  "moonbit-community/tui",
+}
+
+import {
+  "moonbitlang/core/debug",
+} for "wbtest"
+
+supported_targets = "native"

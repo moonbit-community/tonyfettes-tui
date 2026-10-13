@@ -161,6 +161,40 @@ your choice: the snippet copies as soon as the button is released, but
   (OSC 52). A terminal that does not support it ignores the request, and there
   is no way to tell.
 
+## Text input
+
+The `moonbit-community/tui/editor` package is a multi-line text editor. It is
+a separate package built only on the public API above, so it is also the
+pattern for writing your own widgets: a value in your state that knows how to
+draw itself into an area and how to take events.
+
+```moonbit
+// In view. The input grows with its text, so measure it before splitting.
+let rows = state.editor.height(width=size.width - 2, max=4)
+guard! frame.area().split_rows([Fill, Fixed(rows)]) is [body, input]
+guard! input.split_cols([Fixed(2), Fill]) is [marker, text]
+frame.line(marker, @tui.Line::from_text("> "))
+state.editor.draw(frame, text)
+
+// In the event loop.
+Input(Key(key)) =>
+  if !state.editor.key(key) && key.code is Enter {
+    submit(state.editor.text())
+    state.editor.clear()
+  }
+Input(Paste(text)) => state.editor.insert(text)
+```
+
+`key` applies the usual terminal bindings: arrows, Home/End, Backspace and
+Delete, the Emacs chords (Ctrl+A/E/B/F/P/N/H/D/U/K/W), and word movement with
+Alt or Ctrl. It returns whether it used the key. It leaves a plain Enter alone,
+so the application decides what submitting means; Shift+Enter, Alt+Enter, and
+Ctrl+J insert a line break. Up on the first row and Down on the last are also
+left alone, which is where an application can recall history.
+
+Long lines wrap at the area's width, character by character. When the text has
+more rows than the area, the editor scrolls to keep the cursor in view.
+
 ## What is here
 
 - `Style`: foreground, background, bold, italic, underline, reverse.
@@ -177,12 +211,15 @@ your choice: the snippet copies as soon as the button is released, but
 - `with_terminal`, `Terminal::size`, `Terminal::draw`, `Terminal::read_event`,
   `Terminal::set_clipboard`. Each draw is one write, wrapped in a synchronized
   update. Mouse reporting is opt-in.
+- `editor` package: `Editor`, a multi-line text input with `draw`, `key`,
+  `insert`, `text`, `set_text`, `clear`, `height`, and the individual movement
+  and deletion operations.
 
 Run the examples:
 
 ```sh
 moon run examples/counter   # the snippet above
-moon run examples/hello     # input, wrapping, scrolling, selection and copy
+moon run examples/hello     # an editor, scrolling, selection and copy
 ```
 
 ## What is not here yet
@@ -194,7 +231,9 @@ moon run examples/hello     # input, wrapping, scrolling, selection and copy
   carry a row and column; matching them to an area is up to you.
 - Keeping the same text in view when a resize re-wraps the lines. A `Scroll`
   counts lines, so the view can shift after the width changes.
-- Widgets such as a text editor.
+- In the editor: undo, selecting text, placing the cursor with the mouse, and
+  word wrapping.
+- Other widgets, such as lists and menus.
 - Padding, borders, and constraint-based layout. Areas only split into fixed
   and fill pieces.
 - An inline (non-full-screen) mode. Full-screen is the only mode.

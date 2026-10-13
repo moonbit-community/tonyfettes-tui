@@ -1,7 +1,7 @@
 ///|
 /// Everything the screen shows is derived from this.
 struct State {
-  input : Array[Char]
+  editor : @editor.Editor
   submitted : Array[String]
   // Where the submitted lines are scrolled to. It follows new lines until the
   // user scrolls up.
@@ -18,7 +18,16 @@ fn view(state : State, size : @tui.Size) -> @tui.Frame {
   let frame = @tui.Frame(width=size.width, height=size.height)
   let dim = @tui.Style(fg=Basic(BrightBlack))
   let title = @tui.Style(fg=Basic(Cyan), bold=true)
-  guard! frame.area().split_rows([Fixed(1), Fixed(1), Fill, Fixed(1), Fixed(1)])
+  // The input grows with what is typed, up to four rows. Its height has to be
+  // known before the screen is split, so measure it at the width it will get.
+  let marker = @tui.Line::from_text("> ", style=dim)
+  let editor_rows = state.editor.height(
+    width=size.width - marker.width(),
+    max=4,
+  )
+  guard! frame
+    .area()
+    .split_rows([Fixed(1), Fixed(1), Fill, Fixed(editor_rows), Fixed(1)])
     is [header, _, body, prompt, footer]
   // The size label takes the columns it needs; the title gets the rest and is
   // cut off rather than overlapping when the terminal is narrow.
@@ -37,15 +46,15 @@ fn view(state : State, size : @tui.Size) -> @tui.Frame {
   // window onto the result.
   let history : Array[@tui.Line] = []
   for text in state.submitted {
-    history.append(@tui.Line::from_text(text).wrap(body.width))
+    for line in text.split("\n") {
+      history.append(@tui.Line::from_text(line).wrap(body.width))
+    }
   }
   frame.lines(body, history, scroll=state.scroll, selection=state.selection)
-  let input = @tui.Line([
-    Span("> ", style=dim),
-    Span(String::from_array(state.input)),
-  ])
-  frame.line(prompt, input)
-  frame.set_cursor(prompt, col=input.width())
+  guard! prompt.split_cols([Fixed(marker.width()), Fill])
+    is [marker_area, editor_area]
+  frame.line(marker_area, marker)
+  state.editor.draw(frame, editor_area)
   // The hint on the right takes its columns first, so the help text is cut
   // off rather than overlapped on a narrow terminal.
   let more = if state.notice != "" {
@@ -60,7 +69,7 @@ fn view(state : State, size : @tui.Size) -> @tui.Frame {
   frame.line(
     help,
     @tui.Line::from_text(
-      "Enter 提交 · PgUp/PgDn 滚动 · 拖动选中并复制 · Esc 退出",
+      "Enter 提交 · Shift+Enter 换行 · PgUp/PgDn 滚动 · 拖动复制 · Esc 退出",
       style=dim,
     ),
   )
@@ -72,7 +81,7 @@ fn view(state : State, size : @tui.Size) -> @tui.Frame {
 async fn main {
   @tui.with_terminal(mouse=true, terminal => {
     let state = State::{
-      input: [],
+      editor: Editor(),
       submitted: [],
       scroll: Scroll(stick_to_bottom=true),
       selection: Selection(),
@@ -86,22 +95,21 @@ async fn main {
           match key.code {
             Escape => break
             Char('c') if key.modifiers.ctrl() => break
-            Enter => {
-              state.submitted.push(String::from_array(state.input))
-              state.input.clear()
-              state.scroll.to_bottom()
-            }
             PageUp => state.scroll.page_up()
             PageDown => state.scroll.page_down()
-            // Good enough for a demo: drops one code point, not one grapheme.
-            Backspace => ignore(state.input.pop())
+            // Everything else goes to the editor first. It leaves a plain
+            // Enter alone, which is what submits.
             _ =>
-              if key.text is Some(text) {
-                state.input.append(text.to_array())
+              if !state.editor.key(key) &&
+                key.code is Enter &&
+                !state.editor.is_empty() {
+                state.submitted.push(state.editor.text())
+                state.editor.clear()
+                state.scroll.to_bottom()
               }
           }
         }
-        Input(Paste(text)) => state.input.append(text.to_array())
+        Input(Paste(text)) => state.editor.insert(text)
         Input(Mouse({ kind: Scroll(Up), .. })) => state.scroll.scroll_by(-3)
         Input(Mouse({ kind: Scroll(Down), .. })) => state.scroll.scroll_by(3)
         Input(Mouse(mouse)) => {
