@@ -14,11 +14,17 @@ priv struct Cell {
 let blank : Cell = { text: " ", style: Style(), width: 1, }
 
 ///|
-/// A cursor position inside a frame, 0-based.
-priv struct Cursor {
+/// Where the cursor is shown in a frame: a 0-based row and column.
+pub struct Cursor {
   row : Int32
   col : Int32
-} derive(Eq)
+} derive(Eq, Debug)
+
+///|
+pub extend Cursor with Eq::{equal, not_equal}
+
+///|
+pub extend Cursor with @debug.Debug::{to_repr}
 
 ///|
 /// One full picture of the screen: a grid of styled cells plus an optional
@@ -269,6 +275,13 @@ pub fn Frame::fill(self : Frame, area : Rect, style~ : Style = Style()) -> Unit 
       self.put(row, col, " ", style, 1)
     }
   }
+}
+
+///|
+/// Where the frame shows the cursor, or `None` when it is hidden. Together
+/// with `to_text` this is what a test of a view function can check.
+pub fn Frame::cursor(self : Frame) -> Cursor? {
+  self.cursor
 }
 
 ///|

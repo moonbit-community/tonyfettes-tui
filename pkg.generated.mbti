@@ -23,9 +23,18 @@ pub fn Align::equal(Self, Self) -> Bool
 pub fn Align::not_equal(Self, Self) -> Bool
 pub fn Align::to_repr(Self) -> @debug.Repr
 
+pub struct Cursor {
+  row : Int
+  col : Int
+} derive(Eq, @debug.Debug)
+pub fn Cursor::equal(Self, Self) -> Bool
+pub fn Cursor::not_equal(Self, Self) -> Bool
+pub fn Cursor::to_repr(Self) -> @debug.Repr
+
 type Frame
 pub fn Frame::Frame(width~ : Int, height~ : Int) -> Self
 pub fn Frame::area(Self) -> Rect
+pub fn Frame::cursor(Self) -> Cursor?
 pub fn Frame::fill(Self, Rect, style? : Style) -> Unit
 pub fn Frame::height(Self) -> Int
 pub fn Frame::line(Self, Rect, Line, align? : Align) -> Unit

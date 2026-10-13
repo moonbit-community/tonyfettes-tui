@@ -60,7 +60,8 @@ async fn main {
 ```
 
 `view` never touches the terminal, so it can be tested directly:
-`view(state, size).to_text()` returns what the screen would show.
+`view(state, size).to_text()` returns what the screen would show, and
+`.cursor()` where the cursor is.
 
 ## Layout
 
