@@ -16,6 +16,9 @@ struct Terminal {
   // The frame currently on screen, or `None` when the screen content is
   // unknown (before the first draw and after a resize).
   mut shown : Frame?
+  // The program `set_clipboard` also hands the text to, found once when the
+  // session starts.
+  clipboard : ClipboardCommand?
 }
 
 ///|
@@ -34,6 +37,11 @@ pub async fn[T] with_terminal(
   mouse~ : Bool = false,
   f : async (Terminal) -> T,
 ) -> T {
+  let clipboard = find_clipboard_command(@env.get_env_var, path => {
+    @fs.exists(path) catch {
+      _ => false
+    }
+  })
   let tty = @tty.Tty::open()
   defer tty.close()
   let window = tty.window_size()
@@ -41,6 +49,7 @@ pub async fn[T] with_terminal(
     tty,
     size: { width: window.cols, height: window.rows, },
     shown: None,
+    clipboard,
   }
   let keyboard = @tty.KeyboardEnhancementFlags::disambiguate()
   tty.with_raw_mode(() => {
@@ -110,12 +119,21 @@ pub async fn Terminal::read_event(
 ///|
 /// Put `text` on the system clipboard, replacing what was there.
 ///
-/// This asks the terminal to do it (OSC 52), so it also works over SSH.
-/// Terminals that do not support the request, or have clipboard access turned
-/// off, ignore it, and there is no way to tell whether it worked.
+/// This asks the terminal to do it (OSC 52), which also works over SSH. Not
+/// every terminal supports the request, so when the program runs on the
+/// user's own machine the text is also handed to the system's clipboard
+/// program: `pbcopy` on macOS, `wl-copy`, `xclip`, or `xsel` on Linux. Over
+/// SSH only the terminal can reach the user's clipboard.
+///
+/// There is no way to tell whether it worked: a terminal that does not
+/// support the request ignores it, and a failing clipboard program is
+/// ignored too. Waits for the clipboard program, at most two seconds.
 pub async fn Terminal::set_clipboard(
   self : Terminal,
   text : StringView,
 ) -> Unit {
   self.tty.set_clipboard(text)
+  if self.clipboard is Some(command) {
+    command.copy(text)
+  }
 }

@@ -189,8 +189,11 @@ your choice: the snippet copies as soon as the button is released, but
 - A selection is dropped when the area's width changes or when the lines it
   covers are gone.
 - `Terminal::set_clipboard` asks the terminal to set the system clipboard
-  (OSC 52). A terminal that does not support it ignores the request, and there
-  is no way to tell.
+  (OSC 52), which also works over SSH. Some terminals ignore that request, so
+  when the program runs on the user's own machine the text is also handed to
+  `pbcopy` (macOS) or `wl-copy`, `xclip`, or `xsel` (Linux). Over SSH only the
+  terminal can reach the user's clipboard, and there is no way to tell whether
+  it did.
 
 ## Text input
 
