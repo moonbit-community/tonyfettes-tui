@@ -103,7 +103,6 @@ async fn save(state : State) -> Unit {
   }
   let text = state.editor.text()
   @fs.write_file(path, text, create_mode=CreateOrTruncate) catch {
-    error if @async.is_being_cancelled() => raise error
     error => {
       state.message = Some("Could not save \{path}: \{error}")
       return
