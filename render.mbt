@@ -25,30 +25,44 @@ fn Painter::flush(self : Painter) -> Unit {
 }
 
 ///|
+/// Switch the terminal to `style`, sending only the attributes that differ
+/// from the style it is in. A screen of colored text changes style every few
+/// cells, and most of those changes are one color.
 fn Painter::set_style(self : Painter, style : Style) -> Unit {
-  if style == self.pen {
+  let pen = self.pen
+  if style == pen {
     return
   }
   self.flush()
-  // Reset first so attributes of the previous style cannot leak into this one.
-  self.commands.push(ResetStyle)
-  if style.fg != Default {
-    self.commands.push(SetForeground(style.fg))
-  }
-  if style.bg != Default {
-    self.commands.push(SetBackground(style.bg))
-  }
-  if style.bold {
-    self.commands.push(SetBold)
-  }
-  if style.italic {
-    self.commands.push(SetItalic)
-  }
-  if style.underline {
-    self.commands.push(SetUnderline)
-  }
-  if style.reverse {
-    self.commands.push(SetReverse)
+  if style == Style() {
+    // One command clears everything, however much was set.
+    self.commands.push(ResetStyle)
+  } else {
+    // Setting a color to `Default` is how it is turned off.
+    if style.fg != pen.fg {
+      self.commands.push(SetForeground(style.fg))
+    }
+    if style.bg != pen.bg {
+      self.commands.push(SetBackground(style.bg))
+    }
+    if style.bold != pen.bold {
+      self.commands.push(if style.bold { SetBold } else { ResetBold })
+    }
+    if style.italic != pen.italic {
+      self.commands.push(if style.italic { SetItalic } else { ResetItalic })
+    }
+    if style.underline != pen.underline {
+      self.commands.push(
+        if style.underline {
+          SetUnderline
+        } else {
+          ResetUnderline
+        },
+      )
+    }
+    if style.reverse != pen.reverse {
+      self.commands.push(if style.reverse { SetReverse } else { ResetReverse })
+    }
   }
   self.pen = style
 }

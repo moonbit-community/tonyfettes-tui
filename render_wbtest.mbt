@@ -45,9 +45,13 @@ fn Screen::apply(self : Screen, commands : Array[@tty.Command]) -> Unit raise {
       SetForeground(fg) => self.pen = { ..self.pen, fg, }
       SetBackground(bg) => self.pen = { ..self.pen, bg, }
       SetBold => self.pen = { ..self.pen, bold: true, }
+      ResetBold => self.pen = { ..self.pen, bold: false, }
       SetItalic => self.pen = { ..self.pen, italic: true, }
+      ResetItalic => self.pen = { ..self.pen, italic: false, }
       SetUnderline => self.pen = { ..self.pen, underline: true, }
+      ResetUnderline => self.pen = { ..self.pen, underline: false, }
       SetReverse => self.pen = { ..self.pen, reverse: true, }
+      ResetReverse => self.pen = { ..self.pen, reverse: false, }
       HideCursor => self.cursor_shown = false
       ShowCursor => self.cursor_shown = true
       command => fail("diff produced an unexpected command: \{Repr(command)}")
@@ -87,7 +91,6 @@ test "first draw repaints everything" {
       #|  CursorPosition(1, 1),
       #|  Print(<StringView: "ab">),
       #|  CursorPosition(2, 3),
-      #|  ResetStyle,
       #|  SetForeground(Basic(Red)),
       #|  SetBold,
       #|  Print(<StringView: "cd">),
@@ -96,6 +99,54 @@ test "first draw repaints everything" {
     ),
   )
   Screen(width=6, height=2).draw(None, frame)
+}
+
+///|
+test "a style change sends only the attributes that differ" {
+  let bg : @color.Color = Rgb(26, 27, 38)
+  let frame = Frame(width=12, height=1)
+  frame.text(
+    row=0,
+    col=0,
+    "let",
+    style=Style(fg=Basic(Magenta), bg~, bold=true),
+  )
+  frame.text(row=0, col=3, " x ", style=Style(fg=Basic(White), bg~))
+  frame.text(
+    row=0,
+    col=6,
+    "= 1",
+    style=Style(fg=Basic(Green), bg~, italic=true),
+  )
+  // A color is turned off by setting it to the default.
+  frame.text(row=0, col=9, "!", style=Style(italic=true, underline=true))
+  debug_inspect(
+    diff(None, frame),
+    content=(
+      #|[
+      #|  HideCursor,
+      #|  ResetStyle,
+      #|  EraseDisplay,
+      #|  CursorPosition(1, 1),
+      #|  SetForeground(Basic(Magenta)),
+      #|  SetBackground(Rgb(26, 27, 38)),
+      #|  SetBold,
+      #|  Print(<StringView: "let">),
+      #|  SetForeground(Basic(White)),
+      #|  ResetBold,
+      #|  Print(<StringView: " x ">),
+      #|  SetForeground(Basic(Green)),
+      #|  SetItalic,
+      #|  Print(<StringView: "= 1">),
+      #|  SetForeground(Default),
+      #|  SetBackground(Default),
+      #|  SetUnderline,
+      #|  Print(<StringView: "!">),
+      #|  ResetStyle,
+      #|]
+    ),
+  )
+  Screen(width=12, height=1).draw(None, frame)
 }
 
 ///|
