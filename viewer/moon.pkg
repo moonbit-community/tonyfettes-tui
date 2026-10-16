@@ -1,0 +1,7 @@
+import {
+  "moonbit-community/tui",
+  "moonbit-community/tui/editor",
+  "moonbit-community/tty/input",
+}
+
+supported_targets = "native"

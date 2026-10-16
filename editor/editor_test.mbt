@@ -854,7 +854,7 @@ test "clicks outside the text and other mouse events are not used" {
   assert_true(!editor.mouse(click(1, 14)))
   assert_true(!editor.mouse(@input.MouseEvent::new(Release(Left), 2, 4)))
   assert_true(!editor.mouse(@input.MouseEvent::new(Press(Right), 2, 4)))
-  assert_true(!editor.mouse(@input.MouseEvent::new(Scroll(Up), 2, 4)))
+  assert_true(!editor.mouse(@input.MouseEvent::new(Scroll(Left), 2, 4)))
   @debug.assert_eq(editor.position(), (0, 5))
   // Before the first draw there is nowhere to click.
   assert_true(!@editor.Editor(text="x").mouse(click(0, 0)))
@@ -886,7 +886,7 @@ test "layout returns what draw would show, as data" {
   let layout = editor.layout(width=6, height=3)
   // Five rows in all: the third line wraps. The window holds the last three.
   @debug.assert_eq(layout.rows, ["abcde", "fghij", "four"])
-  @debug.assert_eq(layout.cursor, @tui.Cursor(row=2, col=4))
+  @debug.assert_eq(layout.cursor, Some(@tui.Cursor(row=2, col=4)))
   @debug.assert_eq(layout.top, 2)
   @debug.assert_eq(layout.total, 5)
   // Drawing at the same size shows the same rows and cursor.
@@ -900,7 +900,7 @@ test "layout returns what draw would show, as data" {
       #|four
     ),
   )
-  @debug.assert_eq(frame.cursor(), Some(layout.cursor))
+  @debug.assert_eq(frame.cursor(), layout.cursor)
 }
 
 ///|
@@ -913,14 +913,14 @@ test "layout scrolls with the cursor and remembers the width" {
   ignore(editor.move_up())
   let layout = editor.layout(width=10, height=2)
   @debug.assert_eq(layout.rows, ["two", "three"])
-  @debug.assert_eq(layout.cursor, @tui.Cursor(row=0, col=3))
+  @debug.assert_eq(layout.cursor, Some(@tui.Cursor(row=0, col=3)))
   // The width given to layout is the one up and down movement wraps at.
   let long = @editor.Editor(text="abcdefghij")
   ignore(long.layout(width=6, height=4))
   assert_true(long.move_up())
   @debug.assert_eq(
     long.layout(width=6, height=4).cursor,
-    @tui.Cursor(row=0, col=4),
+    Some(@tui.Cursor(row=0, col=4)),
   )
   // An empty editor still has one row, and a height below one counts as one.
   let empty = @editor.Editor().layout(width=10, height=0)
@@ -975,4 +975,110 @@ test "joining lines can join glyphs across the old line break" {
   // One glyph is left, so one step reaches the end.
   editor.move_right()
   @debug.assert_eq(editor.position(), (0, 1))
+}
+
+///|
+test "source line styles survive wrapping and viewport scrolling" {
+  let editor = @editor.Editor(text="same\n012345678\nsame", preserve_text=true)
+  let red = @tui.Style(bg=Rgb(40, 0, 0))
+  editor.move_to_start()
+  let frame = @tui.Frame(width=6, height=5)
+  editor.draw(frame, frame.area(), focused=false, line_style=line => {
+    if line == 2 {
+      red
+    } else {
+      @tui.Style()
+    }
+  })
+  @debug.assert_eq(frame.style_at(row=0, col=0), @tui.Style())
+  @debug.assert_eq(frame.style_at(row=3, col=0), red)
+  editor.move_to_end()
+  let frame = @tui.Frame(width=6, height=2)
+  editor.draw(frame, frame.area(), focused=false, line_style=line => {
+    if line == 2 {
+      red
+    } else {
+      @tui.Style()
+    }
+  })
+  @debug.assert_eq(frame.style_at(row=1, col=0), red)
+}
+
+///|
+test "mouse wheel browses source without moving the caret or snapping back on draw" {
+  let editor = @editor.Editor(
+    text=Array::makei(30, i => "line \{i}").join("\n"),
+    preserve_text=true,
+  )
+  editor.move_to_start()
+  let frame = @tui.Frame(width=20, height=5)
+  editor.draw(frame, frame.area())
+  let position = editor.position()
+  let source = editor.text()
+  assert_true(editor.mouse(@input.MouseEvent::new(Scroll(Down), 2, 4)))
+  let frame = @tui.Frame(width=20, height=5)
+  editor.draw(frame, frame.area())
+  assert_true(frame.to_text().has_prefix("line 3\n"))
+  editor.draw(frame, frame.area())
+  assert_true(frame.to_text().has_prefix("line 3\n"))
+  assert_eq(editor.position(), position)
+  assert_eq(editor.text(), source)
+  assert_eq(frame.cursor(), None)
+  let layout = editor.layout(width=20, height=5)
+  assert_eq(layout.top, 3)
+  assert_eq(layout.cursor, None)
+  // Clicking after wheel browsing uses the visible row, not the old caret.
+  assert_true(editor.mouse(@input.MouseEvent::new(Press(Left), 2, 4)))
+  assert_eq(editor.position(), (4, 3))
+  assert_true(editor.mouse(@input.MouseEvent::new(Scroll(Down), 2, 4)))
+  editor.insert("X")
+  assert_eq(editor.layout(width=20, height=5).top, 4)
+  assert_eq(editor.position(), (4, 4))
+  assert_true(editor.text().contains("linXe 4"))
+}
+
+///|
+test "wheel uses wrapped rows and gutter bounds while horizontal events do nothing" {
+  let editor = @editor.Editor(
+    text="你好世界天地\nsecond\nthird\nfourth\nfifth",
+    preserve_text=true,
+  )
+  editor.move_to_start()
+  let area = @tui.Rect(row=2, col=3, width=10, height=3)
+  let draw = fn() {
+    let frame = @tui.Frame(width=20, height=8)
+    editor.draw(frame, area, line_numbers=@tui.Style())
+    frame
+  }
+  ignore(draw())
+  // The mouse is over the gutter, not the text; scroll in wrapped display rows.
+  assert_true(editor.mouse(@input.MouseEvent::new(Scroll(Down), 3, 4)))
+  let frame = draw()
+  assert_true(frame.to_text().contains("3 third"))
+  assert_eq(editor.position(), (0, 0))
+  for direction in [@input.MouseScroll::Left, @input.MouseScroll::Right] {
+    assert_true(!editor.mouse(@input.MouseEvent::new(Scroll(direction), 3, 4)))
+    assert_eq(draw().to_text(), frame.to_text())
+  }
+  assert_true(!editor.mouse(@input.MouseEvent::new(Scroll(Up), 2, 4)))
+  assert_true(!editor.mouse(@input.MouseEvent::new(Scroll(Up), 3, 3)))
+  assert_eq(draw().to_text(), frame.to_text())
+  for _ in 0..<10 {
+    assert_true(editor.mouse(@input.MouseEvent::new(Scroll(Down), 3, 4)))
+  }
+  assert_true(draw().to_text().contains("5 fifth"))
+  for _ in 0..<10 {
+    assert_true(editor.mouse(@input.MouseEvent::new(Scroll(Up), 3, 4)))
+  }
+  assert_true(draw().to_text().contains("1 你好世"))
+  assert_true(editor.mouse(@input.MouseEvent::new(Scroll(Down), 3, 4)))
+  // Redraw at another size must not return to the offscreen caret.
+  let resized = @tui.Frame(width=11, height=2)
+  editor.draw(resized, resized.area(), focused=false)
+  assert_true(!resized.to_text().contains("你好"))
+  assert_eq(editor.position(), (0, 0))
+  // A boundary navigation key still reveals the caret, even when it cannot move.
+  assert_true(!editor.move_up())
+  assert_true(editor.layout(width=11, height=2).cursor is Some(_))
+  assert_eq(editor.layout(width=11, height=2).top, 0)
 }

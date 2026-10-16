@@ -1,0 +1,27 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tui/viewer"
+
+import {
+  "moonbit-community/tty/input",
+  "moonbit-community/tui",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+type Viewer
+pub fn Viewer::Viewer(source? : String) -> Self
+pub fn Viewer::draw(Self, @tui.Frame, @tui.Rect, focused? : Bool, highlight? : (String) -> Array[@tui.Span], line_numbers? : @tui.Style, current_line? : @tui.Style, line_style? : (Int) -> @tui.Style) -> Unit
+pub fn Viewer::goto_source(Self, line~ : Int, character~ : Int) -> Unit
+pub fn Viewer::mouse(Self, @input.MouseEvent) -> Bool
+pub fn Viewer::navigate(Self, @input.KeyEvent) -> Bool
+pub fn Viewer::set_source(Self, String) -> Unit
+pub fn Viewer::source(Self) -> String
+pub fn Viewer::source_at(Self, row~ : Int, col~ : Int) -> (Int, Int)?
+pub fn Viewer::source_position(Self) -> (Int, Int)
+
+// Type aliases
+
+// Traits

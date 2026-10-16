@@ -9,7 +9,7 @@ import {
 }
 
 // Values
-pub async fn[T] with_terminal(mouse? : Bool, async (Terminal) -> T) -> T
+pub async fn[T] with_terminal(mouse? : Bool, mouse_motion? : Bool, async (Terminal) -> T) -> T
 
 // Errors
 
@@ -47,7 +47,7 @@ pub(all) enum Flex {
 pub fn Flex::equal(Self, Self) -> Bool
 
 type Frame
-pub fn Frame::Frame(width~ : Int, height~ : Int) -> Self
+pub fn Frame::Frame(width~ : Int, height~ : Int, inherit_colors? : Bool) -> Self
 pub fn Frame::area(Self) -> Rect
 pub fn Frame::cursor(Self) -> Cursor?
 pub fn Frame::fill(Self, Rect, style? : Style) -> Unit
@@ -67,6 +67,7 @@ pub fn Layout::vertical(Array[Constraint], spacing? : Int, margin? : Int, flex? 
 
 type Line derive(@debug.Debug)
 pub fn Line::Line(Array[Span]) -> Self
+pub fn Line::concat(Self, Self) -> Self
 pub fn Line::equal(Self, Self) -> Bool
 pub fn Line::from_text(StringView, style? : Style) -> Self
 pub fn Line::to_text(Self) -> String
@@ -86,6 +87,7 @@ pub fn Rect::equal(Self, Self) -> Bool
 type Scroll
 pub fn Scroll::Scroll(stick_to_bottom? : Bool) -> Self
 pub fn Scroll::at_bottom(Self) -> Bool
+pub fn Scroll::hold(Self) -> Unit
 pub fn Scroll::offset(Self) -> Int
 pub fn Scroll::page_down(Self) -> Unit
 pub fn Scroll::page_up(Self) -> Unit
@@ -103,6 +105,7 @@ pub struct Size {
   width : Int
   height : Int
 } derive(Eq, @debug.Debug)
+pub fn Size::Size(width~ : Int, height~ : Int) -> Self
 pub fn Size::equal(Self, Self) -> Bool
 
 pub struct Span {

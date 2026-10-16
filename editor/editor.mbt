@@ -10,8 +10,9 @@
 /// unhandled so the application can submit, and inserts a line break on
 /// Shift+Enter, Alt+Enter, or Ctrl+J.
 struct Editor {
-  // The text as graphemes. A line break is a glyph with the text "\n" and no
-  // width.
+  preserve_text : Bool
+  // The text as graphemes. A line break has no width; source mode also
+  // preserves CRLF as one atomic line-break glyph.
   mut glyphs : Array[Glyph]
   // The cursor sits before `glyphs[cursor]`; `glyphs.length()` is the end.
   mut cursor : Int32
@@ -23,8 +24,12 @@ struct Editor {
   mut width : Int32
   // The first visible row, when there are more rows than the area is tall.
   mut top : Int32
+  // Wheel browsing is independent of the caret until a cursor/edit action.
+  mut follow_cursor : Bool
+  mut mouse_area : @tui.Rect
   // Where the text was last drawn, which is what mouse coordinates refer to.
   mut area : @tui.Rect
+  hits : Array[(Int32, Int32, Int32, Int32, Int32)]
 }
 
 ///|
@@ -35,7 +40,9 @@ priv struct Glyph {
 }
 
 ///|
-let newline : Glyph = { text: "\n", width: 0, }
+fn Glyph::line_break(self : Glyph) -> Bool {
+  self.text == "\n" || self.text == "\r\n"
+}
 
 ///|
 /// `text` as the editor keeps it: line breaks are "\n", tabs become four
@@ -62,13 +69,15 @@ fn clean(text : StringView) -> String {
 /// the glyphs always add up to the text.
 fn glyphs_of(text : String) -> Array[Glyph] {
   let glyphs = []
-  let mut first = true
-  for part in text.split("\n") {
-    if !first {
-      glyphs.push(newline)
+  let parts = text.split("\n").collect()
+  for index, part in parts {
+    let crlf = index + 1 < parts.length() && part.has_suffix("\r")
+    let source = if crlf {
+      part.strip_suffix("\r").unwrap_or(part)
+    } else {
+      part
     }
-    first = false
-    let display = @displaytext.DisplayText(part.to_owned())
+    let display = @displaytext.DisplayText(source.to_owned())
     let mut position = display.start()
     while display.next(position) is Some(next) {
       let grapheme = display.view(position, next).to_owned()
@@ -77,8 +86,15 @@ fn glyphs_of(text : String) -> Array[Glyph] {
       // the same as the frame's.
       glyphs.push({
         text: grapheme,
-        width: @tui.Line::from_text(grapheme).width(),
+        width: if grapheme == "\t" {
+          4
+        } else {
+          @tui.Line::from_text(grapheme).width()
+        },
       })
+    }
+    if index + 1 < parts.length() {
+      glyphs.push({ text: if crlf { "\r\n" } else { "\n" }, width: 0, })
     }
   }
   glyphs
@@ -86,20 +102,35 @@ fn glyphs_of(text : String) -> Array[Glyph] {
 
 ///|
 /// Build an editor holding `text`, with the cursor at the end.
-pub fn Editor::Editor(text~ : StringView = "") -> Editor {
-  let glyphs = glyphs_of(clean(text))
+/// `preserve_text=true` retains source tabs, CRLF and control characters instead
+/// of applying the terminal input field normalization.
+pub fn Editor::Editor(
+  text~ : StringView = "",
+  preserve_text~ : Bool = false,
+) -> Editor {
+  let glyphs = glyphs_of(
+    if preserve_text {
+      text.to_owned()
+    } else {
+      clean(text)
+    },
+  )
   {
+    preserve_text,
     glyphs,
     cursor: glyphs.length(),
     goal: None,
     width: 0,
     top: 0,
+    follow_cursor: true,
+    hits: [],
+    mouse_area: Rect(row=0, col=0, width=0, height=0),
     area: Rect(row=0, col=0, width=0, height=0),
   }
 }
 
 ///|
-/// The text being edited. Lines are separated by "\n".
+/// The exact text being edited. Source mode retains tabs and CRLF line endings.
 pub fn Editor::text(self : Editor) -> String {
   let text = StringBuilder()
   for glyph in self.glyphs {
@@ -117,7 +148,14 @@ pub fn Editor::is_empty(self : Editor) -> Bool {
 ///|
 /// Replace the text and put the cursor at the end.
 pub fn Editor::set_text(self : Editor, text : StringView) -> Unit {
-  self.glyphs = glyphs_of(clean(text))
+  self.glyphs = glyphs_of(
+    if self.preserve_text {
+      text.to_owned()
+    } else {
+      clean(text)
+    },
+  )
+  self.follow_cursor = true
   self.cursor = self.glyphs.length()
   self.goal = None
   self.top = 0
@@ -155,12 +193,13 @@ fn Editor::splice(
   to : Int32,
   text : String,
 ) -> Unit {
+  self.follow_cursor = true
   let mut line_start = from
-  while line_start > 0 && self.glyphs[line_start - 1].text != "\n" {
+  while line_start > 0 && !self.glyphs[line_start - 1].line_break() {
     line_start -= 1
   }
   let mut line_end = to
-  while line_end < self.glyphs.length() && self.glyphs[line_end].text != "\n" {
+  while line_end < self.glyphs.length() && !self.glyphs[line_end].line_break() {
     line_end += 1
   }
   let mut context = Context
@@ -208,7 +247,15 @@ fn Editor::splice(
 /// Insert `text` at the cursor, as typing or pasting it would. It may contain
 /// line breaks.
 pub fn Editor::insert(self : Editor, text : StringView) -> Unit {
-  self.splice(self.cursor, self.cursor, clean(text))
+  self.splice(
+    self.cursor,
+    self.cursor,
+    if self.preserve_text {
+      text.to_owned()
+    } else {
+      clean(text)
+    },
+  )
 }
 
 ///|
@@ -222,7 +269,7 @@ fn Editor::remove(self : Editor, from : Int32, to : Int32) -> Unit {
 /// break, or the start of the text.
 fn Editor::line_start(self : Editor) -> Int32 {
   let mut index = self.cursor
-  while index > 0 && self.glyphs[index - 1].text != "\n" {
+  while index > 0 && !self.glyphs[index - 1].line_break() {
     index -= 1
   }
   index
@@ -233,7 +280,7 @@ fn Editor::line_start(self : Editor) -> Int32 {
 /// of the text.
 fn Editor::line_end(self : Editor) -> Int32 {
   let mut index = self.cursor
-  while index < self.glyphs.length() && self.glyphs[index].text != "\n" {
+  while index < self.glyphs.length() && !self.glyphs[index].line_break() {
     index += 1
   }
   index
@@ -285,6 +332,7 @@ fn Editor::word_end(self : Editor) -> Int32 {
 
 ///|
 fn Editor::move_to(self : Editor, index : Int32) -> Unit {
+  self.follow_cursor = true
   self.cursor = index.clamp(min=0, max=self.glyphs.length())
   self.goal = None
 }
@@ -405,7 +453,7 @@ fn Editor::rows(self : Editor, width : Int32) -> Array[Row] {
   let mut line = 0
   let mut first = true
   for index, glyph in self.glyphs {
-    if glyph.text == "\n" {
+    if glyph.line_break() {
       rows.push(Row::{ start, end: index, line, first, })
       start = index + 1
       used = 0
@@ -480,6 +528,7 @@ fn Editor::index_at(
 /// can to the column it started from. Returns whether it moved; it does not
 /// when that would leave the text.
 fn Editor::move_rows(self : Editor, delta : Int32) -> Bool {
+  self.follow_cursor = true
   let rows = self.rows(self.width)
   let row = self.cursor_row(rows)
   let target = row + delta
@@ -513,7 +562,7 @@ pub fn Editor::move_down(self : Editor) -> Bool {
 pub fn Editor::position(self : Editor) -> (Int32, Int32) {
   let mut line = 0
   for glyph in self.glyphs[:self.cursor] {
-    if glyph.text == "\n" {
+    if glyph.line_break() {
       line += 1
     }
   }
@@ -525,7 +574,32 @@ pub fn Editor::position(self : Editor) -> (Int32, Int32) {
 ///
 /// Pressing the left button on the text, where it was last drawn, moves the
 /// cursor there. A press below the last row goes to the last row.
+/// Vertical wheel events over the text or line numbers browse three display
+/// rows without moving the caret; horizontal wheel events are left unused.
 pub fn Editor::mouse(self : Editor, event : @input.MouseEvent) -> Bool {
+  if event.kind is Scroll(direction) {
+    let area = self.mouse_area
+    let row = event.row - 1
+    let col = event.col - 1
+    guard row >= area.row &&
+      row < area.row + area.height &&
+      col >= area.col &&
+      col < area.col + area.width &&
+      self.area.width > 0 else {
+      return false
+    }
+    let delta = match direction {
+      Up => -3
+      Down => 3
+      Left | Right => return false
+    }
+    self.follow_cursor = false
+    self.top = (self.top + delta).clamp(
+      min=0,
+      max=(self.rows(self.width).length() - self.area.height).max(0),
+    )
+    return true
+  }
   guard event.kind is Press(Left) else { return false }
   // Mouse events use 1-based terminal coordinates.
   let row = event.row - 1 - self.area.row
@@ -535,6 +609,7 @@ pub fn Editor::mouse(self : Editor, event : @input.MouseEvent) -> Bool {
   }
   let rows = self.rows(self.width)
   let target = (self.top + row).min(rows.length() - 1)
+  self.follow_cursor = true
   self.cursor = self.index_at(rows, target, col)
   self.goal = None
   true
@@ -713,8 +788,8 @@ fn digits(n : Int32) -> Int32 {
 pub struct Layout {
   /// The text of each visible row, top to bottom.
   rows : Array[String]
-  /// Where the cursor is among `rows`.
-  cursor : @tui.Cursor
+  /// Where the cursor is among `rows`, absent when wheel browsing hides it.
+  cursor : @tui.Cursor?
   /// The index of the first visible row among all the rows of the text.
   top : Int32
   /// How many rows the whole text takes.
@@ -722,16 +797,20 @@ pub struct Layout {
 } derive(Debug)
 
 ///|
-/// Bring the cursor's row into a window `height` rows tall by scrolling just
-/// far enough, without leaving blank rows at the bottom when the text got
-/// shorter. Returns the cursor's row among `rows`.
+/// Fit the viewport, revealing the caret unless wheel browsing. Do not leave
+/// blank rows at the bottom when the text gets shorter. Returns the caret's
+/// row among `rows`.
 fn Editor::scroll_to_cursor(
   self : Editor,
   rows : Array[Row],
   height : Int32,
 ) -> Int32 {
   let cursor_row = self.cursor_row(rows)
-  let top = self.top.clamp(min=(cursor_row - height + 1).max(0), max=cursor_row)
+  let top = if self.follow_cursor {
+    self.top.clamp(min=(cursor_row - height + 1).max(0), max=cursor_row)
+  } else {
+    self.top
+  }
   self.top = top.clamp(min=0, max=(rows.length() - height).max(0))
   cursor_row
 }
@@ -741,9 +820,9 @@ fn Editor::scroll_to_cursor(
 /// rows tall shows of it.
 ///
 /// This is `draw` without the drawing. Like `draw`, it scrolls to keep the
-/// cursor in the window and records the width for up and down movement, so
-/// call it with the size the text is really shown at. A `height` below one is
-/// treated as one.
+/// cursor in the window except while wheel browsing, and records the width
+/// for up and down movement. Call it with the size the text is really shown
+/// at. A `height` below one is treated as one.
 pub fn Editor::layout(self : Editor, width~ : Int32, height~ : Int32) -> Layout {
   let height = height.max(1)
   self.width = width
@@ -759,10 +838,16 @@ pub fn Editor::layout(self : Editor, width~ : Int32, height~ : Int32) -> Layout 
   }
   {
     rows: visible,
-    cursor: Cursor(
-      row=cursor_row - self.top,
-      col=self.column(rows[cursor_row].start, self.cursor),
-    ),
+    cursor: if cursor_row >= self.top && cursor_row < self.top + height {
+      Some(
+        Cursor(
+          row=cursor_row - self.top,
+          col=self.column(rows[cursor_row].start, self.cursor),
+        ),
+      )
+    } else {
+      None
+    },
     top: self.top,
     total: rows.length(),
   }
@@ -773,8 +858,8 @@ pub fn Editor::layout(self : Editor, width~ : Int32, height~ : Int32) -> Layout 
 /// width, and the cursor.
 ///
 /// When the text has more rows than the area is tall, the rows around the
-/// cursor are shown. Drawing records where the text is, which is what up and
-/// down movement and `mouse` use.
+/// cursor are shown unless wheel browsing has moved the viewport. Drawing
+/// records where the text is, which is what up/down movement and `mouse` use.
 ///
 /// - `style` is the style of the text and of the area behind it.
 /// - `focused=false` draws the text without placing the cursor.
@@ -784,6 +869,7 @@ pub fn Editor::layout(self : Editor, width~ : Int32, height~ : Int32) -> Layout 
 ///   laid over `style`.
 /// - `line_numbers` shows a column of line numbers in that style on the left.
 ///   Rows that continue a wrapped line have no number.
+/// - `line_style` colors a zero-based source line, including wrapped rows.
 /// - `current_line` is laid over `style` on the rows of the line the cursor
 ///   is on, typically to give them a different background.
 pub fn Editor::draw(
@@ -795,7 +881,9 @@ pub fn Editor::draw(
   highlight? : (String) -> Array[@tui.Span],
   line_numbers? : @tui.Style,
   current_line? : @tui.Style,
+  line_style? : (Int32) -> @tui.Style,
 ) -> Unit {
+  self.hits.clear()
   // The last row's line is the last line, so it gives the widest number.
   let unwrapped = self.rows(0)
   let gutter = if line_numbers is Some(_) {
@@ -809,6 +897,7 @@ pub fn Editor::draw(
   }
   self.width = text.width
   self.area = text
+  self.mouse_area = area
   if text.width == 0 || text.height == 0 {
     return
   }
@@ -822,11 +911,39 @@ pub fn Editor::draw(
   // The styles of the line being drawn, from `highlight`: one per glyph,
   // starting at glyph `styled_from`. A wrapped line spans several rows, so
   // they are kept from one row to the next.
+  let mut source_line = 0
+  let mut source_character = 0
+  let mut source_index = 0
   let mut styled_line = -1
   let mut styled_from = 0
   let mut styles : Array[@tui.Style] = []
   for index in self.top..<(self.top + text.height).min(rows.length()) {
     let row = rows[index]
+    while source_index < row.start {
+      let glyph = self.glyphs[source_index]
+      if glyph.line_break() {
+        source_line += 1
+        source_character = 0
+      } else {
+        source_character += glyph.text.length()
+      }
+      source_index += 1
+    }
+    let mut hit_col = text.col
+    let mut character = source_character
+    for glyph in self.glyphs[row.start:row.end] {
+      self.hits.push(
+        (
+          text.row + index - self.top,
+          hit_col,
+          glyph.width,
+          source_line,
+          character,
+        ),
+      )
+      hit_col += glyph.width
+      character += glyph.text.length()
+    }
     let screen_row = text.row + index - self.top
     let row_area = @tui.Rect(
       row=screen_row,
@@ -834,6 +951,12 @@ pub fn Editor::draw(
       width=text.width,
       height=1,
     )
+    let style = if line_style is Some(line_style) {
+      merge(style, line_style(row.line))
+    } else {
+      style
+    }
+    frame.fill(row_area, style~)
     let base = if current_line is Some(current) && row.line == cursor_line {
       let base = merge(style, current)
       frame.fill(row_area, style=base)
@@ -875,18 +998,82 @@ pub fn Editor::draw(
         run.reset()
       }
       run_style = glyph_style
-      run.write_string(self.glyphs[at].text)
+      let glyph = self.glyphs[at].text
+      run.write_string(if glyph == "\t" { "    " } else { glyph })
     }
     if !run.is_empty() {
       spans.push(Span(run.to_string(), style=run_style))
     }
     frame.line(row_area, Line(spans))
   }
-  if focused {
+  if focused && cursor_row >= self.top && cursor_row < self.top + text.height {
     frame.set_cursor(
       text,
       row=cursor_row - self.top,
       col=self.column(rows[cursor_row].start, self.cursor),
     )
   }
+}
+
+///|
+/// Source location at a cell of the last drawn frame. Coordinates are absolute,
+/// zero-based terminal cells; results use zero-based lines and UTF-16 offsets.
+/// Gutters, blank cells and cells outside the text have no source location.
+pub fn Editor::source_at(
+  self : Editor,
+  row~ : Int32,
+  col~ : Int32,
+) -> (Int32, Int32)? {
+  guard row >= self.area.row &&
+    row < self.area.row + self.area.height &&
+    col >= self.area.col &&
+    col < self.area.col + self.area.width else {
+    return None
+  }
+  self.hits
+  .iter()
+  .find_first(hit => hit.0 == row && col >= hit.1 && col < hit.1 + hit.2)
+  .map(hit => (hit.3, hit.4))
+}
+
+///|
+/// The caret's zero-based source line and UTF-16 character offset.
+pub fn Editor::source_position(self : Editor) -> (Int32, Int32) {
+  let mut line = 0
+  let mut character = 0
+  for glyph in self.glyphs[:self.cursor] {
+    if glyph.line_break() {
+      line += 1
+      character = 0
+    } else {
+      character += glyph.text.length()
+    }
+  }
+  (line, character)
+}
+
+///|
+/// Reveal a zero-based source position. Clamp out-of-range locations to the
+/// line/file end and offsets inside a grapheme to its start.
+pub fn Editor::goto_source(
+  self : Editor,
+  line~ : Int32,
+  character~ : Int32,
+) -> Unit {
+  let mut row = 0
+  let mut offset = 0
+  for index, glyph in self.glyphs {
+    if row >= line.max(0) &&
+      (glyph.line_break() || offset + glyph.text.length() > character.max(0)) {
+      self.move_to(index)
+      return
+    }
+    if glyph.line_break() {
+      row += 1
+      offset = 0
+    } else {
+      offset += glyph.text.length()
+    }
+  }
+  self.move_to_end()
 }

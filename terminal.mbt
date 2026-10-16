@@ -6,12 +6,20 @@ pub struct Size {
 } derive(Eq, Debug)
 
 ///|
+/// A terminal size for pure view construction and rendering tests.
+/// Dimensions are clamped to zero to match `Frame`'s empty-layout behavior.
+pub fn Size::Size(width~ : Int32, height~ : Int32) -> Size {
+  { width: width.max(0), height: height.max(0), }
+}
+
+///|
 /// A full-screen terminal session.
 ///
 /// A `Terminal` exists only inside `with_terminal`. Draw complete frames to it
 /// with `draw` and read what the user did with `read_event`.
 struct Terminal {
   tty : @tty.Tty
+  mouse : MouseState
   mut size : Size
   // The frame currently on screen, or `None` when the screen content is
   // unknown (before the first draw and after a resize).
@@ -32,9 +40,11 @@ struct Terminal {
 /// With `mouse`, clicks, drags, and the scroll wheel arrive as `Mouse` events
 /// from `read_event`. The terminal then stops handling the mouse itself, so
 /// its own text selection no longer works while the session runs; use a
-/// `Selection` to provide one.
+/// `Selection` to provide one. `mouse_motion` additionally reports movement
+/// without a pressed button, for pointer hover interfaces.
 pub async fn[T] with_terminal(
   mouse~ : Bool = false,
+  mouse_motion~ : Bool = false,
   f : async (Terminal) -> T,
 ) -> T {
   let clipboard = find_clipboard_command(@env.get_env_var, path => {
@@ -47,6 +57,7 @@ pub async fn[T] with_terminal(
   let window = tty.window_size()
   let terminal = Terminal::{
     tty,
+    mouse: MouseState(),
     size: { width: window.cols, height: window.rows, },
     shown: None,
     clipboard,
@@ -60,8 +71,10 @@ pub async fn[T] with_terminal(
           defer @async.protect_from_cancel(() => {
             tty.execute([ResetStyle, ShowCursor])
           })
-          if mouse {
-            tty.with_mouse(Drag, () => f(terminal))
+          if mouse || mouse_motion {
+            tty.with_mouse(if mouse_motion { Motion } else { Drag }, () => {
+              f(terminal)
+            })
           } else {
             f(terminal)
           }
@@ -108,7 +121,7 @@ pub async fn Terminal::read_event(
   self : Terminal,
   esc_timeout_ms~ : Int32 = 50,
 ) -> @tty.Event {
-  let event = self.tty.read_event(esc_timeout_ms~)
+  let event = self.mouse.event(self.tty.read_event(esc_timeout_ms~))
   if event is Resize(window) {
     self.size = { width: window.cols, height: window.rows, }
     self.shown = None

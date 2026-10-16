@@ -191,3 +191,9 @@ pub fn Line::wrap(self : Line, width : Int32) -> Array[Line] {
   lines.push(Line::from_glyphs(glyphs[start:end]))
   lines
 }
+
+///|
+/// Join styled lines horizontally without flattening their spans.
+pub fn Line::concat(self : Line, other : Line) -> Line {
+  { spans: [..self.spans, ..other.spans], soft_break: other.soft_break, }
+}
