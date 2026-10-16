@@ -251,6 +251,12 @@ spans; the editor maps the styles onto the wrapped rows. `position()` returns
 the cursor's line and column for a status row, and `mouse(event)` moves the
 cursor to where the left button was pressed.
 
+## Source comparisons
+
+The [`diff` package](diff/README.md) draws unified or aligned split comparisons
+with cached line alignment, configurable styles, optional syntax highlighting,
+and mouse or keyboard scrolling. Its inputs are two source strings.
+
 ## What is here
 
 - `Style`: foreground, background, bold, italic, underline, reverse.

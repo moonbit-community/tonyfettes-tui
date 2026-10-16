@@ -1,0 +1,8 @@
+import {
+  "moonbit-community/tui",
+  "moonbit-community/tty/input",
+  "moonbit-community/moondiff/linediff",
+  "moonbit-community/moondiff/model",
+}
+
+supported_targets = "native"
