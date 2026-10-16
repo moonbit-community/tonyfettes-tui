@@ -9,6 +9,7 @@
 /// is.
 struct Scroll {
   stick_to_bottom : Bool
+  mut hold_position : Bool
   // Index of the first visible line.
   mut offset : Int32
   // The largest valid offset and the area height, as of the last draw.
@@ -23,7 +24,13 @@ struct Scroll {
 /// lines are added, until the user scrolls up; scrolling back to the end
 /// resumes following. This is the behaviour a chat log or a live output wants.
 pub fn Scroll::Scroll(stick_to_bottom~ : Bool = false) -> Scroll {
-  { stick_to_bottom, offset: 0, max_offset: 0, height: 0, }
+  {
+    stick_to_bottom,
+    hold_position: false,
+    offset: 0,
+    max_offset: 0,
+    height: 0,
+  }
 }
 
 ///|
@@ -32,10 +39,13 @@ pub fn Scroll::Scroll(stick_to_bottom~ : Bool = false) -> Scroll {
 fn Scroll::fit(self : Scroll, content~ : Int32, height~ : Int32) -> Int32 {
   let max_offset = (content - height).max(0)
   // At the end before this draw means following the content as it grows.
-  if self.stick_to_bottom && self.offset >= self.max_offset {
+  if self.stick_to_bottom &&
+    !self.hold_position &&
+    self.offset >= self.max_offset {
     self.offset = max_offset
   }
   self.offset = self.offset.clamp(min=0, max=max_offset)
+  self.hold_position = false
   self.max_offset = max_offset
   self.height = height
   self.offset
@@ -90,4 +100,11 @@ pub fn Scroll::offset(self : Scroll) -> Int32 {
 /// showing a "more below" hint.
 pub fn Scroll::at_bottom(self : Scroll) -> Bool {
   self.offset >= self.max_offset
+}
+
+///|
+/// Preserve the current position on the next draw when expanding or folding
+/// content in place. Later draws can resume following the bottom as usual.
+pub fn Scroll::hold(self : Scroll) -> Unit {
+  self.hold_position = true
 }

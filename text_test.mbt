@@ -112,3 +112,19 @@ test "wrapped lines are never wider than the width" {
     }
   }
 }
+
+///|
+test "concatenation preserves the styles of wrapped cells without changing inputs" {
+  let first = @tui.Line::from_text("│ ")
+  let content = @tui.Line::from_text("中文 code", style=@tui.Style(bold=true))
+  let wrapped = content.wrap(4)
+  let joined = first.concat(wrapped[0])
+  assert_eq(joined.to_text(), "│ 中文")
+  assert_eq(joined.width(), 6)
+  assert_eq(first.to_text(), "│ ")
+  assert_eq(content.to_text(), "中文 code")
+  let frame = @tui.Frame(width=6, height=1)
+  frame.line(frame.area(), joined)
+  assert_true(!frame.style_at(row=0, col=0).bold)
+  assert_true(frame.style_at(row=0, col=2).bold)
+}

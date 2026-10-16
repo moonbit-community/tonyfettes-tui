@@ -187,3 +187,44 @@ test "a frame with no cells is valid" {
   frame.set_cursor(frame.area())
   inspect(frame.to_text(), content="")
 }
+
+///|
+test "Size can be constructed for views and clamps empty dimensions" {
+  let size = @tui.Size(width=80, height=24)
+  assert_eq(size.width, 80)
+  assert_eq(size.height, 24)
+  let empty = @tui.Size(width=-1, height=-1)
+  assert_eq(empty.width, 0)
+  assert_eq(empty.height, 0)
+}
+
+///|
+test "opt-in color inheritance preserves panel colors and explicit highlights" {
+  let frame = @tui.Frame(width=8, height=2, inherit_colors=true)
+  let base = @tui.Style(fg=Rgb(221, 227, 235), bg=Rgb(17, 22, 30))
+  frame.fill(frame.area(), style=base)
+  let header = @tui.Rect(row=0, col=0, width=8, height=1)
+  frame.fill(header, style=@tui.Style(bg=Rgb(28, 36, 49)))
+  frame.line(
+    header,
+    @tui.Line::from_text("标题", style=@tui.Style(bold=true)),
+  )
+  assert_eq(frame.style_at(row=0, col=0).bg, @tui.Style(bg=Rgb(28, 36, 49)).bg)
+  assert_eq(frame.style_at(row=0, col=0).fg, base.fg)
+  assert_true(frame.style_at(row=0, col=1).bold)
+  frame.text(row=1, col=0, "你好", style=@tui.Style(reverse=true))
+  frame.text(
+    row=1,
+    col=1,
+    "x",
+    style=@tui.Style(fg=Rgb(255, 0, 0), reverse=true),
+  )
+  assert_eq(frame.style_at(row=1, col=0), base)
+  assert_eq(frame.style_at(row=1, col=1).bg, base.bg)
+  assert_true(frame.style_at(row=1, col=1).reverse)
+  assert_eq(frame.style_at(row=1, col=1).fg, @tui.Style(fg=Rgb(255, 0, 0)).fg)
+  let legacy = @tui.Frame(width=2, height=1)
+  legacy.fill(legacy.area(), style=base)
+  legacy.text(row=0, col=0, "x")
+  assert_eq(legacy.style_at(row=0, col=0), @tui.Style())
+}

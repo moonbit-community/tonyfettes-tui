@@ -202,3 +202,20 @@ test "the position is brought back in range when content or area changes" {
     ),
   )
 }
+
+///|
+test "expanding bottom content holds the viewport and folding resumes following" {
+  let scroll = @tui.Scroll(stick_to_bottom=true)
+  ignore(window(scroll, count=10, height=3))
+  assert_eq(scroll.offset(), 7)
+  scroll.hold()
+  ignore(window(scroll, count=30, height=3))
+  assert_eq(scroll.offset(), 7)
+  ignore(window(scroll, count=31, height=3))
+  assert_eq(scroll.offset(), 7)
+  scroll.hold()
+  ignore(window(scroll, count=10, height=3))
+  assert_eq(scroll.offset(), 7)
+  ignore(window(scroll, count=11, height=3))
+  assert_eq(scroll.offset(), 8)
+}

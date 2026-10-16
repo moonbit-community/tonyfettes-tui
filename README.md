@@ -312,3 +312,33 @@ moon check --deny-warn
 moon test
 moon info
 ```
+
+## Read-only source browsing
+
+The `moonbit-community/tui/viewer` package draws a source snapshot with line
+numbers, syntax highlighting callbacks, and keyboard or mouse navigation. Its
+interface has no editing operations. `set_source` replaces the external snapshot
+while retaining the browsing position.
+
+`source_at(row~, col~)` maps a zero-based screen cell to a zero-based source line
+and UTF-16 character offset; `goto_source(line~, character~)` performs the reverse
+navigation. Source text preserves tabs and CRLF. Wheel browsing moves the viewport
+independently of the caret, and cursor navigation resumes following the caret.
+
+`Editor(preserve_text=true)` exposes the same source-preserving layout for editable
+clients. The default composer behavior remains unchanged.
+
+## Drawing extensions
+
+- `Size(width~, height~)` constructs sizes for pure views and rendering tests.
+- `Frame(inherit_colors=true)` lets text inherit colors already painted into a
+  panel. Explicit foreground and background colors still override that palette.
+- `Line.concat` composes styled lines without flattening spans.
+- `Scroll.hold` preserves the current viewport for the next draw when content
+  expands or folds in place.
+- `Editor.draw(line_style~)` styles zero-based source lines across wrapping and
+  scrolling, independently of syntax highlighting.
+
+Mouse gestures track matching button presses. Unmatched drag reports are treated
+as pointer movement, allowing hover behavior to recover from stale terminal
+button state. Focus loss and resize clear the captured button state.

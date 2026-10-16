@@ -41,15 +41,30 @@ struct Frame {
   width : Int32
   height : Int32
   cells : Array[Cell]
+  inherit_colors : Bool
   mut cursor : Cursor?
 }
 
 ///|
 /// Build a blank frame of `width` columns by `height` rows.
-pub fn Frame::Frame(width~ : Int32, height~ : Int32) -> Frame {
+/// With `inherit_colors`, default foreground/background colors retain the
+/// colors already painted at the destination. Fill the frame with a palette
+/// first to keep text independent of the outer terminal's light/dark theme.
+/// Attributes (bold, reverse, etc.) still replace the previous attributes.
+pub fn Frame::Frame(
+  width~ : Int32,
+  height~ : Int32,
+  inherit_colors~ : Bool = false,
+) -> Frame {
   let width = width.max(0)
   let height = height.max(0)
-  { width, height, cells: Array::make(width * height, blank), cursor: None, }
+  {
+    width,
+    height,
+    cells: Array::make(width * height, blank),
+    inherit_colors,
+    cursor: None,
+  }
 }
 
 ///|
@@ -80,7 +95,12 @@ fn Frame::clear_cell(self : Frame, row : Int32, col : Int32) -> Unit {
   }
   let end = (lead + self.cells[base + lead].width.max(1)).min(self.width)
   for c in lead..<end {
-    self.cells[base + c] = blank
+    self.cells[base + c] = if self.inherit_colors {
+      let style = self.cells[base + c].style
+      { ..blank, style: Style(fg=style.fg, bg=style.bg), }
+    } else {
+      blank
+    }
   }
 }
 
@@ -95,6 +115,24 @@ fn Frame::put(
   style : Style,
   width : Int32,
 ) -> Unit {
+  let style = if self.inherit_colors {
+    let background = self.cell(row, col).style
+    {
+      ..style,
+      fg: if style.fg is Default {
+        background.fg
+      } else {
+        style.fg
+      },
+      bg: if style.bg is Default {
+        background.bg
+      } else {
+        style.bg
+      },
+    }
+  } else {
+    style
+  }
   for c in col..<(col + width) {
     self.clear_cell(row, c)
   }
