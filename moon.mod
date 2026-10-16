@@ -7,6 +7,8 @@ import {
   "moonbit-community/tty@0.5.0",
   "moonbitlang/async@0.22.4",
   "kawaz/grapheme@0.10.4",
+  "moonbit-community/casefold@0.1.6",
+  "moonbit-community/cmark@0.4.11",
 }
 
 readme = "README.md"

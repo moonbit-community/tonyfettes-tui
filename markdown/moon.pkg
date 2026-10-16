@@ -1,0 +1,7 @@
+import {
+  "moonbit-community/tty/color",
+  "moonbit-community/tui",
+  "moonbit-community/cmark/cmark",
+}
+
+supported_targets = "native"

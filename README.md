@@ -342,3 +342,11 @@ clients. The default composer behavior remains unchanged.
 Mouse gestures track matching button presses. Unmatched drag reports are treated
 as pointer movement, allowing hover behavior to recover from stale terminal
 button state. Focus loss and resize clear the captured button state.
+
+## Markdown
+
+[`moonbit-community/tui/markdown`](markdown/README.mbt.md) renders CommonMark,
+tables, and task lists as styled lines for `Frame.lines`. It handles terminal
+display widths, nested lists and quotes, streaming input, and narrow tables.
+The `Theme` constructor configures text, muted text, headings, code, and links,
+including inherited backgrounds for light or terminal-default palettes.
