@@ -38,6 +38,14 @@ pub struct Cursor {
 pub fn Cursor::Cursor(row~ : Int, col~ : Int) -> Self
 pub fn Cursor::equal(Self, Self) -> Bool
 
+type Disclosure
+pub fn Disclosure::Disclosure(expanded? : Bool) -> Self
+pub fn Disclosure::expanded(Self) -> Bool
+pub fn Disclosure::key(Self, @input.KeyEvent, selected~ : Bool) -> Bool
+pub fn Disclosure::lines(Self, Line, ArrayView[Line], width~ : Int, selected? : Bool) -> Array[Line]
+pub fn Disclosure::mouse(Self, @input.MouseEvent, Rect) -> Bool
+pub fn Disclosure::set_expanded(Self, Bool) -> Unit
+
 pub(all) enum Flex {
   Start
   Center
