@@ -43,12 +43,9 @@ pub fn Screen::resize(
 ) -> Unit raise ScreenError {
   let cols = cols.clamp(min=1, max=65535)
   let rows = rows.clamp(min=1, max=65535)
-  let code = self.terminal.resize(
-    cols.to_uint16(),
-    rows.to_uint16(),
-    cols.reinterpret_as_uint(),
-    rows.reinterpret_as_uint(),
-  )
+  // Input coordinates use one virtual pixel per terminal cell. These arguments
+  // are per-cell dimensions, not the total grid size.
+  let code = self.terminal.resize(cols.to_uint16(), rows.to_uint16(), 1U, 1U)
   if code.code() != 0 {
     raise ResizeFailed(code.code())
   }
@@ -191,11 +188,18 @@ pub fn Screen::draw(
   if focused &&
     self.render.cursor_visible() &&
     self.render.cursor_viewport() is Some(cursor) {
-    frame.set_cursor(
-      area,
-      row=cursor.y().reinterpret_as_int(),
-      col=cursor.x().to_int(),
-    )
+    let y = cursor.y().reinterpret_as_int()
+    let x = cursor.x().to_int()
+    let row = area.row + y
+    let col = area.col + x
+    if y < area.height &&
+      x < area.width &&
+      row >= 0 &&
+      row < frame.height() &&
+      col >= 0 &&
+      col < frame.width() {
+      frame.set_cursor(frame.area(), row~, col~)
+    }
   }
 }
 

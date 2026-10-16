@@ -35,6 +35,24 @@ test "screen handles alternate-screen lifecycle and cursor visibility" {
 }
 
 ///|
+test "clipped terminal panes hide offscreen cursors without shifting visible ones" {
+  let screen = @terminal.Screen(cols=10, rows=4)
+  defer screen.close()
+  screen.feed(b"\x1b[4;10H")
+  let small = @tui.Frame(width=6, height=2)
+  screen.draw(small, small.area())
+  assert_eq(small.cursor(), None)
+  screen.feed(b"\x1b[2;4H")
+  let frame = @tui.Frame(width=6, height=4)
+  screen.draw(frame, @tui.Rect(row=-1, col=-2, width=10, height=4))
+  assert_eq(frame.cursor(), Some(@tui.Cursor(row=0, col=1)))
+  screen.feed(b"\x1b[1;1H")
+  let hidden = @tui.Frame(width=6, height=4)
+  screen.draw(hidden, @tui.Rect(row=-1, col=-2, width=10, height=4))
+  assert_eq(hidden.cursor(), None)
+}
+
+///|
 test "screen answers terminal queries and exposes the process title" {
   let screen = @terminal.Screen(cols=20, rows=4)
   defer screen.close()
@@ -51,6 +69,16 @@ test "screen answers terminal queries and exposes the process title" {
   screen.resize(cols=0, rows=0)
   assert_eq(screen.cols(), 1)
   assert_eq(screen.rows(), 1)
+}
+
+///|
+test "in-band resize reports use a one-unit cell geometry" {
+  let screen = @terminal.Screen(cols=20, rows=4)
+  defer screen.close()
+  screen.feed(b"\x1b[?2048h")
+  ignore(screen.take_reply())
+  screen.resize(cols=30, rows=5)
+  assert_eq(screen.take_reply(), b"\x1b[48;5;30;5;30t")
 }
 
 ///|
