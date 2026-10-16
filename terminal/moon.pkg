@@ -1,0 +1,23 @@
+import {
+  "moonbit-community/tui",
+  "moonbit-community/tty/input",
+  "moonbit-community/tty/color",
+  "moonbitlang/core/encoding/utf8",
+  "tonyfettes/ghostty/terminal" @vt,
+  "tonyfettes/ghostty/terminal/input" @vt_input,
+  "tonyfettes/ghostty/terminal/key_encoder",
+  "tonyfettes/ghostty/terminal/mouse_encoder",
+  "tonyfettes/ghostty/terminal/focus",
+  "tonyfettes/ghostty/terminal/paste",
+  "tonyfettes/ghostty/terminal/size_report",
+  "tonyfettes/ghostty/terminal/page",
+  "tonyfettes/ghostty/terminal/sgr",
+  "tonyfettes/ghostty/terminal/color" @vt_color,
+}
+
+import {
+  "moonbitlang/async",
+  "moonbit-community/pty",
+} for "test"
+
+supported_targets = "native"

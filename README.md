@@ -251,6 +251,13 @@ spans; the editor maps the styles onto the wrapped rows. `position()` returns
 the cursor's line and column for a status row, and `mouse(event)` moves the
 cursor to where the left button was pressed.
 
+## Embedded terminal
+
+The [`terminal` package](terminal/README.md) provides a Ghostty-backed screen
+that paints process output into any frame rectangle, maintains scrollback, and
+encodes keyboard, mouse, paste, focus, and terminal-query replies. The caller
+owns the local or remote process transport.
+
 ## What is here
 
 - `Style`: foreground, background, bold, italic, underline, reverse.
