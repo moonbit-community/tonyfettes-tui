@@ -312,3 +312,18 @@ moon check --deny-warn
 moon test
 moon info
 ```
+
+## Wheel input batching
+
+`moonbit-community/tui/events` provides `wheel_batch` for applications with a
+background input reader and their own event queue. Pass the first wheel report,
+the queue, and a classifier that extracts mouse events from your event type.
+Apply the returned wheel steps in order, then draw once. If a following event is
+returned, retain and process it before reading the queue again. In particular,
+paint before handling a following click so its hit testing uses the new viewport.
+
+The default input frame is at most 8 ms and 32 steps. Pointer-cell changes,
+modifier changes, non-wheel input, and application updates end the batch. A
+short collection window lets the terminal reader finish asynchronously decoding
+an input burst without requiring a full workspace draw for each step. The
+application retains ownership of its event loop, queue, and drawing policy.

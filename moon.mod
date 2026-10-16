@@ -11,6 +11,8 @@ import {
 
 readme = "README.md"
 
+repository = "https://github.com/moonbit-community/tonyfettes-tui"
+
 license = "Apache-2.0"
 
 keywords = [ "tui", "terminal", "immediate-mode", "native" ]

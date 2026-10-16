@@ -1,0 +1,18 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tui/events"
+
+import {
+  "moonbit-community/tty/input",
+  "moonbitlang/async/aqueue",
+}
+
+// Values
+pub async fn[E] wheel_batch(@input.MouseEvent, @aqueue.Queue[E], (E) -> @input.MouseEvent?, window_ms? : Int, max_steps? : Int) -> (Array[@input.MouseEvent], E?)
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
