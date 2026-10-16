@@ -312,3 +312,16 @@ moon check --deny-warn
 moon test
 moon info
 ```
+
+## Anchored popups
+
+`popup(frame, lines, bounds~, anchor~, scroll?, style~, border_style~)` wraps
+styled lines in a rounded floating panel, preferring space below its zero-based
+anchor and flipping above near the bottom. It returns the actual `Rect` for
+mouse hit testing, or `None` when the panel cannot fit. `max_width` and
+`max_height` include the border and default to 72 columns and 12 rows.
+
+Draw the underlying view first, then the popup. Retain a `Scroll` in your state
+and scroll it when mouse events land inside the returned area. Default content
+colors inherit the popup style; explicit syntax colors stay intact. The popup
+knows nothing about hover requests, language servers, or application state.
