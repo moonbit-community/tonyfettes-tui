@@ -202,6 +202,16 @@ fn Editor::splice(
   while line_end < self.glyphs.length() && !self.glyphs[line_end].line_break() {
     line_end += 1
   }
+  // An inserted CR or LF can join a line-break glyph at either edge. Include
+  // those neighbors so CRLF remains one atomic source glyph after editing.
+  if self.preserve_text {
+    if line_start > 0 {
+      line_start -= 1
+    }
+    if line_end < self.glyphs.length() {
+      line_end += 1
+    }
+  }
   let mut context = Context
   for ;; {
     let start = (from - context).max(line_start)
