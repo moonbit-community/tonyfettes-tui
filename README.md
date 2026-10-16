@@ -251,6 +251,12 @@ spans; the editor maps the styles onto the wrapped rows. `position()` returns
 the cursor's line and column for a status row, and `mouse(event)` moves the
 cursor to where the left button was pressed.
 
+## MoonBit syntax highlighting
+
+The optional [`highlight/moonbit` package](highlight/moonbit/README.md) provides
+a line-highlighting callback for MoonBit source, interface, and script files.
+Its configurable palette preserves the caller's background and emphasis.
+
 ## What is here
 
 - `Style`: foreground, background, bold, italic, underline, reverse.

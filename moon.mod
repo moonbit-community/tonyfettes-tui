@@ -7,9 +7,12 @@ import {
   "moonbit-community/tty@0.5.0",
   "moonbitlang/async@0.22.4",
   "kawaz/grapheme@0.10.4",
+  "moonbitlang/editor@0.4.6",
 }
 
 readme = "README.md"
+
+repository = "https://github.com/moonbit-community/tonyfettes-tui"
 
 license = "Apache-2.0"
 
