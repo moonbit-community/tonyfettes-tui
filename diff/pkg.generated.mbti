@@ -1,0 +1,33 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tui/diff"
+
+import {
+  "moonbit-community/tty/input",
+  "moonbit-community/tui",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+type DiffView
+pub fn DiffView::DiffView(String, String, context? : Int) -> Self
+pub fn DiffView::draw(Self, @tui.Frame, @tui.Rect, mode? : Mode, theme? : Theme, original_label? : String, modified_label? : String, highlight? : (String, @tui.Style) -> Array[@tui.Span]) -> Unit
+pub fn DiffView::mouse(Self, @input.MouseEvent) -> Bool
+pub fn DiffView::navigate(Self, @input.KeyEvent) -> Bool
+pub fn DiffView::offset(Self) -> Int
+pub fn DiffView::scroll_by(Self, Int) -> Unit
+pub fn DiffView::set_sources(Self, String, String) -> Unit
+
+pub(all) enum Mode {
+  Unified
+  Split
+}
+
+type Theme
+pub fn Theme::Theme(text? : @tui.Style, added? : @tui.Style, removed? : @tui.Style, hunk? : @tui.Style, label? : @tui.Style, separator? : @tui.Style) -> Self
+
+// Type aliases
+
+// Traits

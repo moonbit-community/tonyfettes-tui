@@ -7,6 +7,8 @@ import {
   "moonbit-community/tty@0.5.0",
   "moonbitlang/async@0.22.4",
   "kawaz/grapheme@0.10.4",
+  "moonbit-community/prettyprinter@0.4.11",
+  "moonbit-community/moondiff@0.0.10",
 }
 
 readme = "README.md"
