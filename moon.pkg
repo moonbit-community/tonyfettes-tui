@@ -12,6 +12,7 @@ import {
 
 import {
   "moonbitlang/core/debug",
+  "moonbit-community/tty/input",
 } for "test"
 
 import {
