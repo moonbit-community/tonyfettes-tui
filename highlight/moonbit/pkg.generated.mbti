@@ -1,0 +1,20 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tui/highlight/moonbit"
+
+import {
+  "moonbit-community/tty/color",
+  "moonbit-community/tui",
+}
+
+// Values
+pub fn for_path(String, base? : @tui.Style, theme? : Theme) -> ((String) -> Array[@tui.Span])?
+
+// Errors
+
+// Types and methods
+type Theme
+pub fn Theme::Theme(keyword? : @color.Color, type_? : @color.Color, function_? : @color.Color, string? : @color.Color, number? : @color.Color, comment? : @color.Color, escape? : @color.Color, invalid? : @color.Color) -> Self
+
+// Type aliases
+
+// Traits

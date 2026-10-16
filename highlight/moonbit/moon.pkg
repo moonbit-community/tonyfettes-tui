@@ -1,0 +1,8 @@
+import {
+  "moonbit-community/tui",
+  "moonbit-community/tty/color",
+  "moonbitlang/editor/syntax",
+  "moonbitlang/editor/syntax/lang_moonbit",
+}
+
+supported_targets = "native"
