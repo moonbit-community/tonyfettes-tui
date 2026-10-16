@@ -312,3 +312,17 @@ moon check --deny-warn
 moon test
 moon info
 ```
+
+## Draggable pane splits
+
+`Splitter(axis~, position~, min_first~, min_second~, max_first?)` divides an
+area horizontally or vertically with a one-cell divider. `draw(frame, area)`
+returns the two pane areas for application-owned content. Position is the size
+of the first pane; drawing clamps it to the available space and constraints.
+If both minima cannot fit, the first minimum takes priority.
+
+Dispatch mouse events to `mouse` before other widgets. A left press on the
+divider captures the entire gesture until release, even outside the pane, so
+dragging never activates content underneath. `position()` can be persisted;
+`dragging()` can drive pointer hints. Bounds changes cancel capture, and the
+application should call `cancel()` on focus loss or when hiding the split.
