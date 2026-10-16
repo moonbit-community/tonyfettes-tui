@@ -9,6 +9,8 @@ import {
 }
 
 // Values
+pub fn popup(Frame, ArrayView[Line], bounds~ : Rect, anchor~ : Cursor, scroll? : Scroll, style? : Style, border_style? : Style, max_width? : Int, max_height? : Int) -> Rect?
+
 pub async fn[T] with_terminal(mouse? : Bool, async (Terminal) -> T) -> T
 
 // Errors
