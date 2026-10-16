@@ -7,9 +7,13 @@ import {
   "moonbit-community/tty@0.5.0",
   "moonbitlang/async@0.22.4",
   "kawaz/grapheme@0.10.4",
+  "tonyfettes/ghostty@0.5.1",
+  "moonbit-community/pty@0.4.3",
 }
 
 readme = "README.md"
+
+repository = "https://github.com/moonbit-community/tonyfettes-tui"
 
 license = "Apache-2.0"
 

@@ -1,0 +1,36 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tui/terminal"
+
+import {
+  "moonbit-community/tty/input",
+  "moonbit-community/tui",
+}
+
+// Values
+
+// Errors
+pub suberror ScreenError {
+  ResizeFailed(Int)
+}
+
+// Types and methods
+type Screen
+pub fn Screen::Screen(cols~ : Int, rows~ : Int) -> Self raise ScreenError
+pub fn Screen::close(Self) -> Unit
+pub fn Screen::cols(Self) -> Int
+pub fn Screen::draw(Self, @tui.Frame, @tui.Rect, focused? : Bool) -> Unit
+pub fn Screen::feed(Self, Bytes) -> Unit
+pub fn Screen::focus(Self, Bool) -> Bytes
+pub fn Screen::key(Self, @input.KeyEvent) -> Bytes
+pub fn Screen::mouse(Self, @input.MouseEvent) -> Bytes
+pub fn Screen::paste(Self, StringView) -> Bytes
+pub fn Screen::resize(Self, cols~ : Int, rows~ : Int) -> Unit raise ScreenError
+pub fn Screen::rows(Self) -> Int
+pub fn Screen::scroll(Self, Int) -> Unit
+pub fn Screen::scroll_to_bottom(Self) -> Unit
+pub fn Screen::take_reply(Self) -> Bytes
+pub fn Screen::title(Self) -> String?
+
+// Type aliases
+
+// Traits

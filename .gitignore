@@ -4,3 +4,6 @@ _build/
 
 # Local checkouts of dependencies under development
 .deps/
+
+# Sources inspected with moon fetch
+.repos/
