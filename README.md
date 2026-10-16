@@ -312,3 +312,16 @@ moon check --deny-warn
 moon test
 moon info
 ```
+
+## Collapsible details
+
+`Disclosure()` starts collapsed; `lines(title, content, width~, selected~)`
+returns a styled single-row header and, when expanded, wrapped indented content.
+Headers are truncated by display cells, preserving CJK graphemes and styles.
+The application owns focus, payloads, and any status icons in the title.
+
+Pass mouse events and the visible header rectangle to `mouse`; only a stationary
+left click on the same cell and unchanged header toggles it. Movement, scrolling,
+and dragging cancel pending clicks, leaving body text available for selection.
+For a selected header, `key(event, selected=true)` toggles on an unmodified Enter
+or Space press. Read `expanded()` or change it with `set_expanded`.
