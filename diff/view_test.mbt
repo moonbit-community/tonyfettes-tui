@@ -184,3 +184,48 @@ test "a CRLF to LF change stays visible even when carriage returns are not drawn
   assert_true(frame.to_text().contains("+same"))
   assert_true(!frame.to_text().contains("No changes."))
 }
+
+///|
+test "empty files produce insertion and deletion hunks without phantom lines" {
+  for mode in [@diff.Unified, @diff.Split] {
+    let added = @diff.DiffView("", "new", context=0)
+    let frame = @tui.Frame(width=81, height=6)
+    added.draw(frame, frame.area(), mode~)
+    let text = frame.to_text()
+    assert_true(text.contains("@@ -0,0 +1,1 @@"))
+    if mode is Unified {
+      assert_true(text.contains("+new"))
+      assert_true(!text.contains("\n-"))
+    } else {
+      assert_true(text.contains("1 new"))
+    }
+    let removed = @diff.DiffView("old", "", context=0)
+    let frame = @tui.Frame(width=81, height=6)
+    removed.draw(frame, frame.area(), mode~)
+    assert_true(frame.to_text().contains("@@ -1,1 +0,0 @@"))
+  }
+}
+
+///|
+test "offscreen pane bounds use only visible body rows for scrolling and input" {
+  let old = [ for i in 0..<20 => "old \{i}" ].join("\n")
+  let new = [ for i in 0..<20 => "new \{i}" ].join("\n")
+  let view = @diff.DiffView(old, new)
+  let frame = @tui.Frame(width=50, height=6)
+  let pane = @tui.Rect(row=2, col=3, width=80, height=20)
+  let calls : Array[String] = []
+  view.draw(frame, pane, highlight=(text, base) => {
+    calls.push(text)
+    [@tui.Span(text, style=base)]
+  })
+  // Three visible body rows, one of which is the hunk header.
+  assert_eq(calls.length(), 2)
+  assert_true(!view.mouse(@input.MouseEvent::new(Scroll(Down), 8, 5)))
+  assert_true(!view.mouse(@input.MouseEvent::new(Scroll(Down), 5, 60)))
+  assert_true(view.mouse(@input.MouseEvent::new(Scroll(Down), 5, 5)))
+  assert_eq(view.offset(), 3)
+  assert_true(view.navigate(@input.KeyEvent::new(End)))
+  let next = @tui.Frame(width=50, height=6)
+  view.draw(next, pane)
+  assert_true(next.to_text().contains("+new 19"))
+}

@@ -26,13 +26,16 @@ test "draw an aligned source comparison" {
 side by side with source line numbers and blank cells for one-sided changes.
 Both sides share one scroll position. Split mode falls back to unified below
 forty columns. Lines clip horizontally rather than wrapping, so corresponding
-source rows stay aligned.
+source rows stay aligned. Pane bounds are clipped to the frame before layout,
+scroll limits, and mouse hit testing are recorded.
 
 The default context is three unchanged lines around each hunk. Pass `context`
 to the constructor to change it; negative values are treated as zero. Identical
 snapshots display `No changes.`. LF and CRLF retain their original line indices;
 CRLF's carriage return is removed only from displayed text, not from comparison.
-A change in line endings therefore remains a change.
+A change in line endings therefore remains a change. An entirely empty snapshot
+has zero source lines, so whole-file additions and deletions use zero-length
+hunk ranges for the empty side.
 
 ## Input and changing snapshots
 

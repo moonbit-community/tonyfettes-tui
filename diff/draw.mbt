@@ -39,7 +39,8 @@ fn draw_source(
 /// Paint the visible diff rows. Lines are clipped horizontally rather than
 /// wrapped, preserving alignment. Split mode uses synchronized, aligned rows
 /// and falls back to unified below forty columns. Changing format preserves
-/// the displayed row offset, clamped to the new format's extent.
+/// the displayed row offset, clamped to the new format's extent. The pane is
+/// clipped to the frame before layout, scrolling, and mouse hit testing.
 ///
 /// The optional highlighter receives the source text and its diff style;
 /// return spans retaining that style's background to preserve change coloring.
@@ -53,6 +54,14 @@ pub fn DiffView::draw(
   modified_label~ : String = "Modified",
   highlight? : (String, @tui.Style) -> Array[@tui.Span],
 ) -> Unit {
+  let row = area.row.max(0)
+  let col = area.col.max(0)
+  let area = @tui.Rect(
+    row~,
+    col~,
+    width=(area.col + area.width).min(frame.width()) - col,
+    height=(area.row + area.height).min(frame.height()) - row,
+  )
   let split = mode is Split && area.width >= 40
   let body = @tui.Rect(
     row=area.row + 1,

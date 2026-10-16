@@ -28,7 +28,11 @@ priv enum SplitRow {
 
 ///|
 fn source_lines(source : String) -> Array[String] {
-  source.split("\n").map(line => line.to_owned()).collect()
+  if source.is_empty() {
+    []
+  } else {
+    source.split("\n").map(line => line.to_owned()).collect()
+  }
 }
 
 ///|
