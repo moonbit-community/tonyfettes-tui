@@ -1,0 +1,19 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tui/markdown"
+
+import {
+  "moonbit-community/tui",
+}
+
+// Values
+pub fn render(String, Int, dim? : Bool, theme? : Theme) -> Array[@tui.Line]
+
+// Errors
+
+// Types and methods
+type Theme
+pub fn Theme::Theme(text? : @tui.Style, muted? : @tui.Style, heading? : @tui.Style, code? : @tui.Style, link? : @tui.Style) -> Self
+
+// Type aliases
+
+// Traits
