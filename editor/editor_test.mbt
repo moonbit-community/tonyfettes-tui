@@ -10,13 +10,13 @@ fn edited(
   let frame = @tui.Frame(width~, height~)
   editor.draw(frame, frame.area())
   let rows = []
-  for index, text in frame.to_text().split("\n").collect() {
+  for index, text in frame.to_text().split("\n") {
     rows.push(text.to_owned())
     if frame.cursor() is Some(cursor) && cursor.row == index {
       rows.push(" ".repeat(cursor.col) + "^")
     }
   }
-  while rows.length() > 0 && rows[rows.length() - 1] == "" {
+  while rows.last() is Some("") {
     ignore(rows.pop())
   }
   rows.join("\n")

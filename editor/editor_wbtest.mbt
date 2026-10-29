@@ -65,7 +65,7 @@ test "long runs that pair up are cut again as far as an edit reaches" {
   // one at the front changes every pair after it. The window around the edit
   // has to keep widening until it covers the whole run.
   let flags = "\u{1F1E6}\u{1F1E8}".repeat(200)
-  let editor = Editor(text="start " + flags + " end")
+  let editor = Editor(text="start \{flags} end")
   editor.move_to_start()
   for _ in 0..<6 {
     editor.move_right()

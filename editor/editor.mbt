@@ -62,12 +62,10 @@ fn clean(text : StringView) -> String {
 /// the glyphs always add up to the text.
 fn glyphs_of(text : String) -> Array[Glyph] {
   let glyphs = []
-  let mut first = true
-  for part in text.split("\n") {
-    if !first {
+  for index, part in text.split("\n") {
+    if index > 0 {
       glyphs.push(newline)
     }
-    first = false
     let display = @displaytext.DisplayText(part.to_owned())
     let mut position = display.start()
     while display.next(position) is Some(next) {
@@ -180,12 +178,9 @@ fn Editor::splice(
     // An edge is settled when it is the edge of the line, or when the glyph
     // next to it came out the same as before.
     let left_settled = start == line_start ||
-      (glyphs.length() > 0 && glyphs[0].text == self.glyphs[start].text)
+      (glyphs is [first, ..] && first.text == self.glyphs[start].text)
     let right_settled = end == line_end ||
-      (
-        glyphs.length() > 0 &&
-        glyphs[glyphs.length() - 1].text == self.glyphs[end - 1].text
-      )
+      (glyphs is [.., last] && last.text == self.glyphs[end - 1].text)
     if !left_settled || !right_settled {
       context = context * 4
       continue
