@@ -30,8 +30,8 @@ fn State::modified(self : State) -> Bool {
 /// The file's name without its directories, for the tab.
 fn file_name(path : String?) -> String {
   guard path is Some(path) else { return "untitled" }
-  if path.rev_find("/") is Some(slash) {
-    path[slash + 1:].to_owned()
+  if path.rev_split_once("/") is Some((_, name)) {
+    name.to_owned()
   } else {
     path
   }
@@ -117,7 +117,7 @@ async fn save(state : State) -> Unit {
 fn newline_keeping_indent(editor : @editor.Editor) -> Unit {
   let (line, _) = editor.position()
   let indent = StringBuilder()
-  if editor.text().split("\n").drop(line).head() is Some(current) {
+  if editor.text().split("\n").nth(line) is Some(current) {
     for c in current {
       if c != ' ' {
         break
@@ -125,7 +125,7 @@ fn newline_keeping_indent(editor : @editor.Editor) -> Unit {
       indent.write_char(c)
     }
   }
-  editor.insert("\n" + indent.to_string())
+  editor.insert("\n\{indent}")
 }
 
 ///|

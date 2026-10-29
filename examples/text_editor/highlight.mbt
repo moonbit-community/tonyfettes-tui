@@ -30,6 +30,12 @@ fn is_ident(c : Char) -> Bool {
 }
 
 ///|
+/// The characters that make up an operator, highlighted as one run.
+fn is_operator(c : Char) -> Bool {
+  "=<>!+-*/|&%:~?".contains_char(c)
+}
+
+///|
 /// The index of the first character from `from` on that `keep` rejects.
 fn skip(chars : Array[Char], from : Int32, keep : (Char) -> Bool) -> Int32 {
   let mut index = from
@@ -131,11 +137,8 @@ fn highlight_moonbit(line : String) -> Array[@tui.Span] {
         plain
       }
       (end, style)
-    } else if "=<>!+-*/|&%:~?".contains_char(c) {
-      (
-        skip(chars, index, c => "=<>!+-*/|&%:~?".contains_char(c)),
-        operator_style,
-      )
+    } else if is_operator(c) {
+      (skip(chars, index, is_operator), operator_style)
     } else {
       (index + 1, plain)
     }
