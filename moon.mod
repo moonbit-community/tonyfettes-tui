@@ -18,3 +18,5 @@ keywords = [ "tui", "terminal", "immediate-mode", "native" ]
 description = "Immediate-mode terminal UI library for MoonBit native targets, built on moonbit-community/tty."
 
 preferred_target = "native"
+
+repository = "https://github.com/moonbit-community/tonyfettes-tui"

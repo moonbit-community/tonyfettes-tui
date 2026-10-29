@@ -22,20 +22,20 @@ pub(all) enum Align {
 pub fn Align::equal(Self, Self) -> Bool
 
 pub(all) enum Constraint {
-  Length(Int)
-  Percentage(Int)
-  Ratio(Int, Int)
-  Min(Int)
-  Max(Int)
-  Fill(Int)
+  Length(Int32)
+  Percentage(Int32)
+  Ratio(Int32, Int32)
+  Min(Int32)
+  Max(Int32)
+  Fill(Int32)
 } derive(Eq, @debug.Debug)
 pub fn Constraint::equal(Self, Self) -> Bool
 
 pub struct Cursor {
-  row : Int
-  col : Int
+  row : Int32
+  col : Int32
 } derive(Eq, @debug.Debug)
-pub fn Cursor::Cursor(row~ : Int, col~ : Int) -> Self
+pub fn Cursor::Cursor(row~ : Int32, col~ : Int32) -> Self
 pub fn Cursor::equal(Self, Self) -> Bool
 
 pub(all) enum Flex {
@@ -47,49 +47,49 @@ pub(all) enum Flex {
 pub fn Flex::equal(Self, Self) -> Bool
 
 type Frame
-pub fn Frame::Frame(width~ : Int, height~ : Int) -> Self
+pub fn Frame::Frame(width~ : Int32, height~ : Int32) -> Self
 pub fn Frame::area(Self) -> Rect
 pub fn Frame::cursor(Self) -> Cursor?
 pub fn Frame::fill(Self, Rect, style? : Style) -> Unit
-pub fn Frame::height(Self) -> Int
+pub fn Frame::height(Self) -> Int32
 pub fn Frame::line(Self, Rect, Line, align? : Align) -> Unit
 pub fn Frame::lines(Self, Rect, ArrayView[Line], align? : Align, scroll? : Scroll, selection? : Selection) -> Unit
-pub fn Frame::set_cursor(Self, Rect, row? : Int, col? : Int) -> Unit
-pub fn Frame::style_at(Self, row~ : Int, col~ : Int) -> Style
-pub fn Frame::text(Self, row~ : Int, col~ : Int, StringView, style? : Style) -> Unit
+pub fn Frame::set_cursor(Self, Rect, row? : Int32, col? : Int32) -> Unit
+pub fn Frame::style_at(Self, row~ : Int32, col~ : Int32) -> Style
+pub fn Frame::text(Self, row~ : Int32, col~ : Int32, StringView, style? : Style) -> Unit
 pub fn Frame::to_text(Self) -> String
-pub fn Frame::width(Self) -> Int
+pub fn Frame::width(Self) -> Int32
 
 type Layout
-pub fn Layout::horizontal(Array[Constraint], spacing? : Int, margin? : Int, flex? : Flex) -> Self
+pub fn Layout::horizontal(Array[Constraint], spacing? : Int32, margin? : Int32, flex? : Flex) -> Self
 pub fn Layout::split(Self, Rect) -> Array[Rect]
-pub fn Layout::vertical(Array[Constraint], spacing? : Int, margin? : Int, flex? : Flex) -> Self
+pub fn Layout::vertical(Array[Constraint], spacing? : Int32, margin? : Int32, flex? : Flex) -> Self
 
 type Line derive(@debug.Debug)
 pub fn Line::Line(Array[Span]) -> Self
 pub fn Line::equal(Self, Self) -> Bool
 pub fn Line::from_text(StringView, style? : Style) -> Self
 pub fn Line::to_text(Self) -> String
-pub fn Line::width(Self) -> Int
-pub fn Line::wrap(Self, Int) -> Array[Self]
+pub fn Line::width(Self) -> Int32
+pub fn Line::wrap(Self, Int32) -> Array[Self]
 pub impl Eq for Line
 
 pub struct Rect {
-  row : Int
-  col : Int
-  width : Int
-  height : Int
+  row : Int32
+  col : Int32
+  width : Int32
+  height : Int32
 } derive(Eq, @debug.Debug)
-pub fn Rect::Rect(row~ : Int, col~ : Int, width~ : Int, height~ : Int) -> Self
+pub fn Rect::Rect(row~ : Int32, col~ : Int32, width~ : Int32, height~ : Int32) -> Self
 pub fn Rect::equal(Self, Self) -> Bool
 
 type Scroll
 pub fn Scroll::Scroll(stick_to_bottom? : Bool) -> Self
 pub fn Scroll::at_bottom(Self) -> Bool
-pub fn Scroll::offset(Self) -> Int
+pub fn Scroll::offset(Self) -> Int32
 pub fn Scroll::page_down(Self) -> Unit
 pub fn Scroll::page_up(Self) -> Unit
-pub fn Scroll::scroll_by(Self, Int) -> Unit
+pub fn Scroll::scroll_by(Self, Int32) -> Unit
 pub fn Scroll::to_bottom(Self) -> Unit
 pub fn Scroll::to_top(Self) -> Unit
 
@@ -100,8 +100,8 @@ pub fn Selection::mouse(Self, @input.MouseEvent) -> Unit
 pub fn Selection::text(Self) -> String?
 
 pub struct Size {
-  width : Int
-  height : Int
+  width : Int32
+  height : Int32
 } derive(Eq, @debug.Debug)
 pub fn Size::equal(Self, Self) -> Bool
 
@@ -125,7 +125,7 @@ pub fn Style::equal(Self, Self) -> Bool
 
 type Terminal
 pub async fn Terminal::draw(Self, Frame) -> Unit
-pub async fn Terminal::read_event(Self, esc_timeout_ms? : Int) -> @tty.Event
+pub async fn Terminal::read_event(Self, esc_timeout_ms? : Int32) -> @tty.Event
 pub async fn Terminal::set_clipboard(Self, StringView) -> Unit
 pub fn Terminal::size(Self) -> Size
 
