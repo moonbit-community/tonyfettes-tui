@@ -178,7 +178,7 @@ fn sizes(
     }
   })
   for weights in [fills, minimums] {
-    if weights.iter().any(weight => weight > 0) {
+    if weights.any(weight => weight > 0) {
       share(sizes, weights, left)
       return (sizes, 0)
     }
