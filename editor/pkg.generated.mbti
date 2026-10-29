@@ -19,13 +19,13 @@ pub fn Editor::delete_after(Self) -> Unit
 pub fn Editor::delete_before(Self) -> Unit
 pub fn Editor::delete_word_before(Self) -> Unit
 pub fn Editor::draw(Self, @tui.Frame, @tui.Rect, style? : @tui.Style, focused? : Bool, highlight? : (String) -> Array[@tui.Span], line_numbers? : @tui.Style, current_line? : @tui.Style) -> Unit
-pub fn Editor::height(Self, width~ : Int, max? : Int) -> Int
+pub fn Editor::height(Self, width~ : Int32, max? : Int32) -> Int32
 pub fn Editor::insert(Self, StringView) -> Unit
 pub fn Editor::is_empty(Self) -> Bool
 pub fn Editor::key(Self, @input.KeyEvent) -> Bool
 pub fn Editor::kill_after(Self) -> Unit
 pub fn Editor::kill_before(Self) -> Unit
-pub fn Editor::layout(Self, width~ : Int, height~ : Int) -> Layout
+pub fn Editor::layout(Self, width~ : Int32, height~ : Int32) -> Layout
 pub fn Editor::mouse(Self, @input.MouseEvent) -> Bool
 pub fn Editor::move_down(Self) -> Bool
 pub fn Editor::move_end(Self) -> Unit
@@ -37,15 +37,15 @@ pub fn Editor::move_to_start(Self) -> Unit
 pub fn Editor::move_up(Self) -> Bool
 pub fn Editor::move_word_left(Self) -> Unit
 pub fn Editor::move_word_right(Self) -> Unit
-pub fn Editor::position(Self) -> (Int, Int)
+pub fn Editor::position(Self) -> (Int32, Int32)
 pub fn Editor::set_text(Self, StringView) -> Unit
 pub fn Editor::text(Self) -> String
 
 pub struct Layout {
   rows : Array[String]
   cursor : @tui.Cursor
-  top : Int
-  total : Int
+  top : Int32
+  total : Int32
 } derive(@debug.Debug)
 
 // Type aliases
