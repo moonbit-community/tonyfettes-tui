@@ -62,7 +62,7 @@ fn view(state : State, size : @tui.Size) -> @tui.Frame {
   // The hint on the right takes its columns first, so the help text is cut
   // off rather than overlapped on a narrow terminal.
   let more = if state.notice != "" {
-    " " + state.notice
+    " \{state.notice}"
   } else if state.scroll.at_bottom() {
     ""
   } else {
